@@ -1,0 +1,30 @@
+[
+  {
+    "name": "鳥若 北見総本店",
+    "genre": "焼き鳥",
+    "area": "北見",
+    "address": "北見市北5条西2丁目 東宝ビル1F",
+    "hpUrl": "https://life-v.co.jp/shop/toriwaka/",
+    "hpLabel": "公式",
+    "recommended": "若鳥の半身塩焼き",
+    "status": "行きたい",
+    "rating": "-",
+    "memo": "平日17:00-23:30 / 日祝16:00-22:30。休みは12/31-1/2のみ。TEL 0157-23-5621",
+    "lat": 43.805836,
+    "lng": 143.891953
+  },
+  {
+    "name": "MILK CROWN",
+    "genre": "ジェラート",
+    "area": "北見・端野",
+    "address": "北見市端野町三区366-5",
+    "hpUrl": "https://milkcrown-ice.com/",
+    "hpLabel": "公式",
+    "recommended": "くんねっぷミルク、キャラメルチーズクランチ",
+    "status": "行きたい",
+    "rating": "-",
+    "memo": "A2ミルク使用。平日10:00-15:00、土日祝休。[Instagram](https://www.instagram.com/crownmilk)",
+    "lat": 43.850464,
+    "lng": 143.921295
+  }
+]

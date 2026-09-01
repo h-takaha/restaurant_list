@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>行きたい食事処マップ</title>
+
+  <!-- Leaflet 1.9.4 -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #map {
+      flex: 1;
+      width: 100%;
+    }
+
+    /* ── 凡例 ── */
+    #legend {
+      position: absolute;
+      bottom: 28px;
+      right: 8px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      line-height: 1.8;
+      box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    }
+    #legend .dot {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .dot-unvisited { background: #2563eb; }
+    .dot-visited   { background: #16a34a; }
+
+    /* ── 座標未取得リスト ── */
+    #no-coords {
+      display: none;
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      color: #6b7280;
+      box-shadow: 0 1px 4px rgba(0,0,0,.2);
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    /* ── Leaflet ポップアップ調整 ── */
+    .leaflet-popup-content {
+      font-size: 14px;
+      line-height: 1.6;
+      min-width: 200px;
+      max-width: 80vw;
+    }
+    .leaflet-popup-content h3 {
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+    .leaflet-popup-content p {
+      margin: 2px 0;
+      color: #374151;
+    }
+    .leaflet-popup-content .links {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .leaflet-popup-content .links a {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: #2563eb;
+      color: #fff;
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .leaflet-popup-content .links a.gmaps {
+      background: #16a34a;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="legend">
+  <span class="dot dot-unvisited"></span>未訪問<br>
+  <span class="dot dot-visited"></span>訪問済
+</div>
+<div id="no-coords"></div>
+
+<script>
+(async () => {
+  // ── データ読み込み ──────────────────────────────────────────
+  let restaurants;
+  try {
+    const res = await fetch('data.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    restaurants = await res.json();
+  } catch (e) {
+    document.getElementById('no-coords').style.display = 'block';
+    document.getElementById('no-coords').textContent = 'data.json の読み込みに失敗しました: ' + e.message;
+    return;
+  }
+
+  // ── 地図初期化（日本中央あたりで仮置き; fitBounds で上書きされる） ──
+  const map = L.map('map').setView([43.8, 143.9], 13);
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // ── マーカーアイコン（色分け） ──
+  function makeIcon(visited) {
+    const color = visited ? '#16a34a' : '#2563eb';
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="24" height="36">
+        <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 24 12 24S24 21 24 12C24 5.373 18.627 0 12 0z"
+              fill="${color}" stroke="#fff" stroke-width="1.5"/>
+        <circle cx="12" cy="12" r="5" fill="#fff"/>
+      </svg>`;
+    return L.divIcon({
+      html: svg,
+      className: '',
+      iconSize: [24, 36],
+      iconAnchor: [12, 36],
+      popupAnchor: [0, -36],
+    });
+  }
+
+  // ── マーカー配置 ──
+  const bounds = [];
+  const noCoords = [];
+
+  for (const r of restaurants) {
+    if (r.lat == null || r.lng == null) {
+      noCoords.push(r.name);
+      continue;
+    }
+
+    const visited = r.status === '訪問済';
+    const marker = L.marker([r.lat, r.lng], { icon: makeIcon(visited) }).addTo(map);
+
+    // ポップアップ内容
+    const hpHtml = r.hpUrl
+      ? `<a href="${escHtml(r.hpUrl)}" target="_blank" rel="noopener">${escHtml(r.hpLabel || '公式サイト')}</a>`
+      : '';
+    const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}`;
+    const gmapsHtml = `<a href="${gmapsUrl}" target="_blank" rel="noopener" class="gmaps">Google マップ</a>`;
+
+    const popup = `
+      <h3>${escHtml(r.name)}</h3>
+      <p>${escHtml(r.genre)}　<span style="color:#6b7280">${escHtml(r.status)}</span></p>
+      ${r.recommended ? `<p>🍽 ${escHtml(r.recommended)}</p>` : ''}
+      <p style="color:#6b7280;font-size:13px">${escHtml(r.address)}</p>
+      <div class="links">
+        ${hpHtml}
+        ${gmapsHtml}
+      </div>`;
+
+    marker.bindPopup(popup);
+    bounds.push([r.lat, r.lng]);
+  }
+
+  // ── 初期ビュー ──
+  if (bounds.length > 0) {
+    map.fitBounds(bounds, { padding: [40, 40] });
+  }
+
+  // ── 座標未取得リスト ──
+  if (noCoords.length > 0) {
+    const el = document.getElementById('no-coords');
+    el.style.display = 'block';
+    el.textContent = '座標未取得: ' + noCoords.join('、');
+  }
+
+  // ── ユーティリティ ──
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+})();
+</script>
+</body>
+</html>
