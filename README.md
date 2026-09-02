@@ -1,6 +1,12 @@
 # 行きたい食事処リスト
 
-一覧は [restaurants.md](restaurants.md)。
+一覧は [restaurants.md](restaurants.md)。地図は <https://h-takaha.github.io/restaurant_list/>。
+
+## 地図の更新
+
+`restaurants.md` を編集したら `node build.mjs` を実行し、`docs/data.json` を作り直して push する。GitHub Pages は main ブランチの `/docs` を公開している。
+
+座標は住所から国土地理院のジオコーダで引いている（APIキー不要）。位置がずれていたら `docs/data.json` の `lat` / `lng` を手で直せばよい。住所を書き換えない限り、その値が使われ続ける。
 
 ## 登録のしかた
 
