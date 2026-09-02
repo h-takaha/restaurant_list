@@ -21,9 +21,88 @@
       flex-direction: column;
     }
 
-    #map {
+    /* ── タブ ── */
+    #tab-bar {
+      flex: none;
+      display: flex;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    #tab-bar button {
       flex: 1;
+      padding: 11px 0;
+      font: inherit;
+      font-size: 14px;
+      color: #6b7280;
+      background: #fff;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+    }
+    #tab-bar button[aria-selected="true"] {
+      color: #2563eb;
+      font-weight: 600;
+      border-bottom-color: #2563eb;
+    }
+
+    /* ── ジャンル絞り込み ── */
+    #genre-bar {
+      flex: none;
+      display: flex;
+      gap: 6px;
+      padding: 8px;
+      overflow-x: auto;
+      white-space: nowrap;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    #genre-bar button {
+      flex: none;
+      padding: 5px 13px;
+      font: inherit;
+      font-size: 13px;
+      color: #374151;
+      background: #fff;
+      border: 1px solid #d1d5db;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    #genre-bar button[aria-pressed="true"] {
+      color: #fff;
+      background: #2563eb;
+      border-color: #2563eb;
+    }
+
+    /* ── 地図ビュー ── */
+    #map-view {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+    }
+    #map {
       width: 100%;
+      height: 100%;
+    }
+
+    /* ── リストビュー ── */
+    #list-view {
+      display: none;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 8px;
+      background: #f9fafb;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+    }
+    .empty {
+      padding: 24px 0;
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
     }
 
     /* ── 凡例 ── */
@@ -68,28 +147,35 @@
       text-align: center;
     }
 
-    /* ── Leaflet ポップアップ調整 ── */
+    /* ── 店の詳細（ポップアップとリストで共用） ── */
     .leaflet-popup-content {
       font-size: 14px;
       line-height: 1.6;
       min-width: 200px;
       max-width: 80vw;
     }
-    .leaflet-popup-content h3 {
+    .leaflet-popup-content h3,
+    .card h3 {
       font-size: 15px;
       margin-bottom: 4px;
     }
-    .leaflet-popup-content p {
+    .leaflet-popup-content p,
+    .card p {
       margin: 2px 0;
       color: #374151;
+      font-size: 14px;
+      line-height: 1.6;
     }
-    .leaflet-popup-content .links {
+    .muted { color: #6b7280; }
+    .addr  { color: #6b7280; font-size: 13px; }
+
+    .links {
       margin-top: 8px;
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
     }
-    .leaflet-popup-content .links a {
+    .links a {
       display: inline-block;
       padding: 4px 10px;
       border-radius: 4px;
@@ -98,22 +184,35 @@
       text-decoration: none;
       font-size: 13px;
     }
-    .leaflet-popup-content .links a.gmaps {
+    .links a.gmaps {
       background: #16a34a;
     }
   </style>
 </head>
 <body>
 
-<div id="map"></div>
-<div id="legend">
-  <span class="dot dot-unvisited"></span>未訪問<br>
-  <span class="dot dot-visited"></span>訪問済
+<div id="tab-bar">
+  <button id="tab-map"  aria-selected="true">地図</button>
+  <button id="tab-list" aria-selected="false">リスト</button>
 </div>
-<div id="no-coords"></div>
+
+<div id="genre-bar"></div>
+
+<div id="map-view">
+  <div id="map"></div>
+  <div id="legend">
+    <span class="dot dot-unvisited"></span>未訪問<br>
+    <span class="dot dot-visited"></span>訪問済
+  </div>
+  <div id="no-coords"></div>
+</div>
+
+<div id="list-view"></div>
 
 <script>
 (async () => {
+  const el = id => document.getElementById(id);
+
   // ── データ読み込み ──────────────────────────────────────────
   let restaurants;
   try {
@@ -121,18 +220,20 @@
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     restaurants = await res.json();
   } catch (e) {
-    document.getElementById('no-coords').style.display = 'block';
-    document.getElementById('no-coords').textContent = 'data.json の読み込みに失敗しました: ' + e.message;
+    el('no-coords').style.display = 'block';
+    el('no-coords').textContent = 'data.json の読み込みに失敗しました: ' + e.message;
     return;
   }
 
-  // ── 地図初期化（日本中央あたりで仮置き; fitBounds で上書きされる） ──
+  // ── 地図（初期ビューは fitBounds で上書きされる） ──
   const map = L.map('map').setView([43.8, 143.9], 13);
 
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19,
   }).addTo(map);
+
+  const markerGroup = L.layerGroup().addTo(map);
 
   // ── マーカーアイコン（色分け） ──
   function makeIcon(visited) {
@@ -152,51 +253,97 @@
     });
   }
 
-  // ── マーカー配置 ──
-  const bounds = [];
-  const noCoords = [];
-
-  for (const r of restaurants) {
-    if (r.lat == null || r.lng == null) {
-      noCoords.push(r.name);
-      continue;
-    }
-
-    const visited = r.status === '訪問済';
-    const marker = L.marker([r.lat, r.lng], { icon: makeIcon(visited) }).addTo(map);
-
-    // ポップアップ内容
+  // ── 店の詳細（ポップアップとリストで共用） ──
+  function detailHtml(r) {
     const hpHtml = r.hpUrl
       ? `<a href="${escHtml(r.hpUrl)}" target="_blank" rel="noopener">${escHtml(r.hpLabel || '公式サイト')}</a>`
       : '';
     const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}`;
-    const gmapsHtml = `<a href="${gmapsUrl}" target="_blank" rel="noopener" class="gmaps">Google マップ</a>`;
-
-    const popup = `
+    return `
       <h3>${escHtml(r.name)}</h3>
-      <p>${escHtml(r.genre)}　<span style="color:#6b7280">${escHtml(r.status)}</span></p>
+      <p>${escHtml(r.genre)}　<span class="muted">${escHtml(r.status)}</span></p>
       ${r.recommended ? `<p>🍽 ${escHtml(r.recommended)}</p>` : ''}
-      <p style="color:#6b7280;font-size:13px">${escHtml(r.address)}</p>
+      <p class="addr">${escHtml(r.address)}</p>
       <div class="links">
         ${hpHtml}
-        ${gmapsHtml}
+        <a href="${gmapsUrl}" target="_blank" rel="noopener" class="gmaps">Google マップ</a>
       </div>`;
-
-    marker.bindPopup(popup);
-    bounds.push([r.lat, r.lng]);
   }
 
-  // ── 初期ビュー ──
-  if (bounds.length > 0) {
-    map.fitBounds(bounds, { padding: [40, 40] });
+  // ── マーカー生成（座標のある店だけ。以後は出し入れするだけで作り直さない） ──
+  const markers = [];
+  for (const r of restaurants) {
+    if (r.lat == null || r.lng == null) continue;
+    const marker = L.marker([r.lat, r.lng], { icon: makeIcon(r.status === '訪問済') });
+    marker.bindPopup(detailHtml(r));
+    markers.push({ r, marker });
   }
 
-  // ── 座標未取得リスト ──
-  if (noCoords.length > 0) {
-    const el = document.getElementById('no-coords');
-    el.style.display = 'block';
-    el.textContent = '座標未取得: ' + noCoords.join('、');
+  // ── ジャンル絞り込み ──
+  let activeGenre = null; // null = すべて
+
+  const matches = r => activeGenre === null || r.genre === activeGenre;
+
+  const genreBar = el('genre-bar');
+  function addGenreButton(label, value) {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.setAttribute('aria-pressed', String(activeGenre === value));
+    button.addEventListener('click', () => {
+      activeGenre = value;
+      for (const other of genreBar.children) other.setAttribute('aria-pressed', 'false');
+      button.setAttribute('aria-pressed', 'true');
+      render();
+    });
+    genreBar.appendChild(button);
   }
+  addGenreButton('すべて', null);
+  for (const genre of new Set(restaurants.map(r => r.genre))) addGenreButton(genre, genre);
+
+  // ── 描画 ──
+  function render() {
+    renderMap();
+    renderList();
+  }
+
+  function renderMap() {
+    markerGroup.clearLayers();
+    const bounds = [];
+    for (const { r, marker } of markers) {
+      if (!matches(r)) continue;
+      markerGroup.addLayer(marker);
+      bounds.push(marker.getLatLng());
+    }
+    // 1件だけのときに街路レベルまで寄り切らないよう maxZoom で止める
+    if (bounds.length > 0) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+
+    const missing = restaurants.filter(r => matches(r) && r.lat == null).map(r => r.name);
+    const banner = el('no-coords');
+    banner.style.display = missing.length > 0 ? 'block' : 'none';
+    banner.textContent = '座標未取得: ' + missing.join('、');
+  }
+
+  function renderList() {
+    const hits = restaurants.filter(matches);
+    el('list-view').innerHTML = hits.length > 0
+      ? hits.map(r => `<article class="card">${detailHtml(r)}</article>`).join('')
+      : '<p class="empty">該当する店はありません</p>';
+  }
+
+  // ── タブ切り替え ──
+  function showTab(name) {
+    const isMap = name === 'map';
+    el('map-view').style.display  = isMap ? 'block' : 'none';
+    el('list-view').style.display = isMap ? 'none'  : 'block';
+    el('tab-map').setAttribute('aria-selected', String(isMap));
+    el('tab-list').setAttribute('aria-selected', String(!isMap));
+    // display を戻した直後はまだリフロー前でサイズ0を返すため、1フレーム待つ
+    if (isMap) requestAnimationFrame(() => map.invalidateSize());
+  }
+  el('tab-map').addEventListener('click', () => showTab('map'));
+  el('tab-list').addEventListener('click', () => showTab('list'));
+
+  render();
 
   // ── ユーティリティ ──
   function escHtml(str) {

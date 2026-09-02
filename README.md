@@ -1,6 +1,6 @@
 # 行きたい食事処リスト
 
-一覧は [restaurants.md](restaurants.md)。地図は <https://h-takaha.github.io/restaurant_list/>。
+一覧は [restaurants.md](restaurants.md)。地図は <https://h-takaha.github.io/restaurant_list/>。上部のタブで地図とリストを切り替えられ、ジャンルのボタンで絞り込める。ジャンルは `restaurants.md` の記述そのままなので、新しいジャンルの店を足せばボタンも増える。
 
 ## 地図の更新
 
