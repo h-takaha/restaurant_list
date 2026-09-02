@@ -26,5 +26,33 @@
     "memo": "A2ミルク使用。平日10:00-15:00、土日祝休。[Instagram](https://www.instagram.com/crownmilk)",
     "lat": 43.850464,
     "lng": 143.921295
+  },
+  {
+    "name": "海鮮家 魚政",
+    "genre": "海鮮居酒屋",
+    "area": "北見",
+    "address": "北見市北五条西4-11 ソシアルプラザビル1F",
+    "hpUrl": "https://life-v.co.jp/shop/uomasa/",
+    "hpLabel": "公式",
+    "recommended": "刺身盛り合わせ、活ホタテ（常呂漁港直送）",
+    "status": "行きたい",
+    "rating": "-",
+    "memo": "17:00-23:30（日祝-22:30）。年末年始以外定休なし",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "TumuLab（ツムラボ）/ 津村製麺所",
+    "genre": "ひやむぎ専門店",
+    "area": "北見",
+    "address": "北見市豊地26番地26",
+    "hpUrl": "https://tumugu.tsumura-seimen.co.jp/",
+    "hpLabel": "公式",
+    "recommended": "生ひやむぎ（北海道産小麦使用）",
+    "status": "行きたい",
+    "rating": "-",
+    "memo": "水〜金10:00-18:00（食事11:00-15:00）/ 第1・3土10:00-16:00（食事11:00-15:00）",
+    "lat": null,
+    "lng": null
   }
 ]
