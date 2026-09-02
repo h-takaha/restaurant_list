@@ -1,0 +1,45 @@
+name: 地図データを再生成
+
+on:
+  push:
+    branches: [main]
+    paths: ['restaurants.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-map-data
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: node build.mjs
+
+      - name: 座標が入らなかった店を警告
+        run: |
+          node -e "
+            const rows = require('./docs/data.json');
+            const missing = rows.filter(r => r.lat == null).map(r => r.name);
+            if (missing.length) console.log('::warning::座標未取得: ' + missing.join('、'));
+          "
+
+      - name: 変更があれば commit
+        run: |
+          if git diff --quiet -- docs/data.json; then
+            echo '座標に変更なし'
+            exit 0
+          fi
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/data.json
+          git commit -m '地図データの座標を再生成'
+          git push
