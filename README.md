@@ -4,7 +4,7 @@
 
 ## 地図の更新
 
-`restaurants.md` を編集したら `node build.mjs` を実行し、`docs/data.json` を作り直して push する。GitHub Pages は main ブランチの `/docs` を公開している。
+`restaurants.md` を編集して push すれば、GitHub Actions（[build-map-data.yml](.github/workflows/build-map-data.yml)）が `node build.mjs` を回して `docs/data.json` を作り直し、差分があれば commit してくれる。手元で build する必要はない。GitHub Pages は main ブランチの `/docs` を公開している。
 
 座標は住所から国土地理院のジオコーダで引いている（APIキー不要）。位置がずれていたら `docs/data.json` の `lat` / `lng` を手で直せばよい。住所を書き換えない限り、その値が使われ続ける。
 
@@ -30,7 +30,7 @@
 
 **routine が main を進めるので、ローカルで作業する前に `git pull` する。** routine の設定は <https://claude.ai/code/routines>。
 
-**routine の実行環境からは国土地理院のジオコーダに届かない。** routine が追加した店は `docs/data.json` の `lat` / `lng` が `null` のまま push され、地図には「座標未取得」と出る。ローカルで `git pull` して `node build.mjs` を回し、push すれば座標が入る。
+routine の実行環境からは国土地理院のジオコーダに届かないため、routine が追加した店は座標が `null` のまま push される。その直後に GitHub Actions が走って座標を埋めるので、放っておいてよい。
 
 ## 設計メモ
 
