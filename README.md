@@ -30,6 +30,8 @@
 
 **routine が main を進めるので、ローカルで作業する前に `git pull` する。** routine の設定は <https://claude.ai/code/routines>。
 
+**routine の実行環境からは国土地理院のジオコーダに届かない。** routine が追加した店は `docs/data.json` の `lat` / `lng` が `null` のまま push され、地図には「座標未取得」と出る。ローカルで `git pull` して `node build.mjs` を回し、push すれば座標が入る。
+
 ## 設計メモ
 
 - 一覧は Markdown の表1つ。検索も編集もエディタと GitHub で完結する
