@@ -1,0 +1,30 @@
+name: 地図URLを解決
+
+# routine の実行環境は Google ドメインが egress ポリシーで遮断されていて、
+# メール本文の短縮 URL を開けない。件名だけでは店を特定しきれないとき
+# （表記ゆれ・同名店が他県にある等）に、ここで正式な店名を確定させる。
+#
+# 座標はここでは取れない（HTML に入っている座標はランナーの所在地）。
+# 座標は従来どおり build-map-data.yml が住所から国土地理院で引く。
+on:
+  workflow_dispatch:
+    inputs:
+      urls:
+        description: 'Google マップ共有 URL（複数ならスペース区切り）'
+        required: true
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: 解決する
+        # 入力を run: に直接展開するとスクリプトインジェクションになるので env 経由で渡す
+        env:
+          URLS: ${{ github.event.inputs.urls }}
+        run: node resolve-map.mjs $URLS
