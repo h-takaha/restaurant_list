@@ -1,0 +1,4 @@
+# build.mjs は data.json を必ず LF で書き出す。core.autocrlf=true の環境では
+# checkout 時に CRLF へ変換され、ローカルで build するたび差分が出たように見えて
+# ff-only の pull が止まる。作業ツリーでも LF のままにしておく。
+docs/data.json text eol=lf
