@@ -12,9 +12,6 @@ on:
       urls:
         description: 'Google マップ共有 URL（複数ならスペース区切り）'
         required: true
-  # 検証用。main に入れる前に外す
-  push:
-    branches: ['try-resolve-map']
 
 jobs:
   resolve:
@@ -29,5 +26,5 @@ jobs:
       - name: 解決する
         # 入力を run: に直接展開するとスクリプトインジェクションになるので env 経由で渡す
         env:
-          URLS: ${{ github.event.inputs.urls || 'https://maps.app.goo.gl/ozFsXbN1g2tw2GVc9 https://maps.app.goo.gl/b51o9Zis6Rwebc1e6' }}
+          URLS: ${{ github.event.inputs.urls }}
         run: node resolve-map.mjs $URLS
