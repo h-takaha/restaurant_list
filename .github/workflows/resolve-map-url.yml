@@ -31,4 +31,4 @@ jobs:
             URLS="https://maps.app.goo.gl/ozFsXbN1g2tw2GVc9 https://maps.app.goo.gl/b51o9Zis6Rwebc1e6"
           fi
           echo "対象: $URLS"
-          node resolve-map.mjs $URLS
+          node resolve-map.mjs --debug $URLS

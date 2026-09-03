@@ -124,6 +124,37 @@ if (isMain) {
     console.error('使い方: node resolve-map.mjs <url> [<url> ...]');
     process.exit(1);
   }
+  // --debug: 座標がどこに埋まっているか本文を実測する
+  if (urls[0] === '--debug') {
+    for (const u of urls.slice(1)) {
+      const res = await fetch(u, {
+        redirect: 'follow',
+        headers: { 'User-Agent': UA, 'Accept-Language': 'ja,en;q=0.8' },
+      });
+      const body = await res.text();
+      console.log(`\n===== ${u}`);
+      console.log(`finalUrl: ${res.url}\n`);
+
+      // 日本の緯度っぽい数値の周辺を出す
+      const re = /(?<![\d.])(3[0-9]|4[0-5])\.\d{4,}(?![\d])/g;
+      const seen = new Set();
+      let m, shown = 0;
+      while ((m = re.exec(body)) && shown < 12) {
+        const ctx = body.slice(Math.max(0, m.index - 90), m.index + 90).replace(/\s+/g, ' ');
+        if (seen.has(ctx)) continue;
+        seen.add(ctx);
+        shown++;
+        console.log(`[lat候補 ${m[0]}] …${ctx}…\n`);
+      }
+
+      for (const key of ['itemprop="latitude"', 'APP_INITIALIZATION_STATE', 'og:image', '"latitude"']) {
+        const i = body.indexOf(key);
+        console.log(`${key}: ${i < 0 ? 'なし' : '…' + body.slice(i - 60, i + 200).replace(/\s+/g, ' ') + '…'}\n`);
+      }
+    }
+    process.exit(0);
+  }
+
   let failed = 0;
   for (const u of urls) {
     try {
