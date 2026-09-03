@@ -1,16 +1,18 @@
 name: 地図URLを解決
 
-# routine の実行環境は Google ドメインが egress ポリシーで遮断されているため、
-# 短縮 URL の解決だけ Actions 側に寄せる。手元で確かめたいとき用。
+# routine の実行環境は Google ドメインが egress ポリシーで遮断されていて、
+# メール本文の短縮 URL を開けない。件名だけでは店を特定しきれないとき
+# （表記ゆれ・同名店が他県にある等）に、ここで正式な店名を確定させる。
+#
+# 座標はここでは取れない（HTML に入っている座標はランナーの所在地）。
+# 座標は従来どおり build-map-data.yml が住所から国土地理院で引く。
 on:
   workflow_dispatch:
     inputs:
       urls:
         description: 'Google マップ共有 URL（複数ならスペース区切り）'
         required: true
-        # 検証用の既定値: あかちょうちん（正解=美幌 43.824/144.105）と 東相内店（住所不明）
-        default: 'https://maps.app.goo.gl/ozFsXbN1g2tw2GVc9 https://maps.app.goo.gl/b51o9Zis6Rwebc1e6'
-  # 検証ブランチに push したときも走らせる
+  # 検証用。main に入れる前に外す
   push:
     branches: ['try-resolve-map']
 
@@ -24,11 +26,8 @@ jobs:
         with:
           node-version: '20'
 
-      - name: 解決してみる
-        run: |
-          URLS="${{ github.event.inputs.urls }}"
-          if [ -z "$URLS" ]; then
-            URLS="https://maps.app.goo.gl/ozFsXbN1g2tw2GVc9 https://maps.app.goo.gl/b51o9Zis6Rwebc1e6"
-          fi
-          echo "対象: $URLS"
-          node resolve-map.mjs --debug $URLS
+      - name: 解決する
+        # 入力を run: に直接展開するとスクリプトインジェクションになるので env 経由で渡す
+        env:
+          URLS: ${{ github.event.inputs.urls || 'https://maps.app.goo.gl/ozFsXbN1g2tw2GVc9 https://maps.app.goo.gl/b51o9Zis6Rwebc1e6' }}
+        run: node resolve-map.mjs $URLS
