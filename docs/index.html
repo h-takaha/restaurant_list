@@ -43,6 +43,71 @@
       font-weight: 600;
       border-bottom-color: #2563eb;
     }
+    #tab-bar button#tab-settings {
+      flex: none;
+      width: 44px;
+      font-size: 17px;
+    }
+
+    /* ── 設定パネル ── */
+    #settings {
+      display: none;
+      flex: none;
+      padding: 10px 12px 12px;
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.7;
+    }
+    #settings p { margin-bottom: 6px; }
+    #settings input {
+      width: 100%;
+      padding: 6px 8px;
+      font: inherit;
+      font-size: 13px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+    }
+    #settings .row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    #settings button {
+      padding: 6px 14px;
+      font: inherit;
+      font-size: 13px;
+      border-radius: 4px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #374151;
+      cursor: pointer;
+    }
+    #settings button.primary {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #fff;
+    }
+
+    /* ── 保存結果の通知 ── */
+    #toast {
+      display: none;
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      z-index: 2000;
+      max-width: 92vw;
+      padding: 9px 16px;
+      border-radius: 6px;
+      background: rgba(31, 41, 55, 0.94);
+      color: #fff;
+      font-size: 13px;
+      line-height: 1.5;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+    #toast.error { background: rgba(185, 28, 28, 0.96); }
 
     /* ── ジャンル絞り込み ── */
     #genre-bar {
@@ -187,6 +252,61 @@
     .links a.gmaps {
       background: #16a34a;
     }
+
+    /* ── 来店回数と評価の編集 ── */
+    .edit {
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .edit button {
+      padding: 3px 10px;
+      font: inherit;
+      font-size: 13px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      background: #fff;
+      color: #374151;
+      cursor: pointer;
+    }
+    .edit button.visit {
+      border-color: #16a34a;
+      color: #16a34a;
+      font-weight: 600;
+    }
+    .edit button[disabled] { opacity: .4; cursor: default; }
+
+    /* 星は下地のグレーに黄色を width で被せて 0.5 刻みを表現する */
+    .stars {
+      position: relative;
+      display: inline-block;
+      font-size: 19px;
+      line-height: 1;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+    .stars .base { color: #d1d5db; }
+    .stars .fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      color: #f59e0b;
+      pointer-events: none;
+    }
+    .stars .hit {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      width: 10%;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -194,6 +314,22 @@
 <div id="tab-bar">
   <button id="tab-map"  aria-selected="true">地図</button>
   <button id="tab-list" aria-selected="false">リスト</button>
+  <button id="tab-settings" title="設定" aria-label="設定">⚙</button>
+</div>
+
+<div id="settings">
+  <p id="token-state"></p>
+  <p class="muted">
+    来店回数と評価をこの画面から書き換えるには GitHub のアクセストークンが要ります。
+    <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained token</a>
+    を <b>restaurant_list リポジトリのみ</b>・<b>Contents: Read and write</b> で作ってください。
+    トークンはこの端末のブラウザにだけ保存されます。
+  </p>
+  <input id="token-input" type="password" autocomplete="off" placeholder="github_pat_..." />
+  <div class="row">
+    <button id="token-save" class="primary">保存</button>
+    <button id="token-clear">削除</button>
+  </div>
 </div>
 
 <div id="genre-bar"></div>
@@ -209,9 +345,16 @@
 
 <div id="list-view"></div>
 
+<div id="toast"></div>
+
 <script>
 (async () => {
   const el = id => document.getElementById(id);
+
+  const REPO = 'h-takaha/restaurant_list';
+  const MD_PATH = 'restaurants.md';
+  // 同じ origin に別のページも載っているので、キーは用途込みで持つ
+  const TOKEN_KEY = 'restaurant_list.github_token';
 
   // ── データ読み込み ──────────────────────────────────────────
   let restaurants;
@@ -253,17 +396,48 @@
     });
   }
 
+  // ── 星（0.5 刻み） ──
+  function starsHtml(i, rating, editable) {
+    const pct = ((rating ?? 0) / 5) * 100;
+    let hits = '';
+    if (editable) {
+      for (let step = 1; step <= 10; step++) {
+        hits += `<button class="hit" data-act="rate" data-i="${i}" data-value="${step / 2}"`
+          + ` style="left:${(step - 1) * 10}%" aria-label="★${step / 2}"></button>`;
+      }
+    }
+    return `<span class="stars">`
+      + `<span class="base">★★★★★</span>`
+      + `<span class="fill" style="width:${pct}%">★★★★★</span>`
+      + hits
+      + `</span>`;
+  }
+
   // ── 店の詳細（ポップアップとリストで共用） ──
   function detailHtml(r) {
+    const i = restaurants.indexOf(r);
+    const editable = hasToken();
     const hpHtml = r.hpUrl
       ? `<a href="${escHtml(r.hpUrl)}" target="_blank" rel="noopener">${escHtml(r.hpLabel || '公式サイト')}</a>`
       : '';
     const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}`;
+    const visitLabel = r.visits > 0 ? `来店 ${r.visits} 回` : '未訪問';
+    const ratingLabel = r.rating == null ? '未評価' : r.rating.toFixed(1);
     return `
       <h3>${escHtml(r.name)}</h3>
-      <p>${escHtml(r.genre)}　<span class="muted">${escHtml(r.status)}</span></p>
+      <p>${escHtml(r.genre)}　<span class="muted">${visitLabel}</span></p>
       ${r.recommended ? `<p>🍽 ${escHtml(r.recommended)}</p>` : ''}
       <p class="addr">${escHtml(r.address)}</p>
+      <div class="edit">
+        ${starsHtml(i, r.rating, editable)}
+        <span class="muted">${ratingLabel}</span>
+        ${editable && r.rating != null ? `<button data-act="rate-clear" data-i="${i}">評価を消す</button>` : ''}
+      </div>
+      ${editable ? `
+      <div class="edit">
+        <button class="visit" data-act="visit-inc" data-i="${i}">来店 +1</button>
+        <button data-act="visit-dec" data-i="${i}"${r.visits === 0 ? ' disabled' : ''}>−1</button>
+      </div>` : ''}
       <div class="links">
         ${hpHtml}
         <a href="${gmapsUrl}" target="_blank" rel="noopener" class="gmaps">Google マップ</a>
@@ -274,9 +448,9 @@
   const markers = [];
   for (const r of restaurants) {
     if (r.lat == null || r.lng == null) continue;
-    const marker = L.marker([r.lat, r.lng], { icon: makeIcon(r.status === '訪問済') });
+    const marker = L.marker([r.lat, r.lng], { icon: makeIcon(r.visits > 0) });
     marker.bindPopup(detailHtml(r));
-    markers.push({ r, marker });
+    markers.push({ r, marker, visited: r.visits > 0 });
   }
 
   // ── ジャンル絞り込み ──
@@ -343,6 +517,199 @@
   el('tab-map').addEventListener('click', () => showTab('map'));
   el('tab-list').addEventListener('click', () => showTab('list'));
 
+  // ── アクセストークン ────────────────────────────────────────
+  function hasToken() {
+    return !!localStorage.getItem(TOKEN_KEY);
+  }
+
+  function renderTokenState() {
+    el('token-state').textContent = hasToken()
+      ? 'トークン保存済み。来店回数と評価を編集できます。'
+      : 'トークン未設定。閲覧のみで、編集はできません。';
+  }
+
+  el('tab-settings').addEventListener('click', () => {
+    const panel = el('settings');
+    const open = panel.style.display !== 'block';
+    panel.style.display = open ? 'block' : 'none';
+    if (open) {
+      renderTokenState();
+      el('token-input').value = '';
+    }
+  });
+  el('token-save').addEventListener('click', () => {
+    const value = el('token-input').value.trim();
+    if (!value) { toast('トークンが空です', true); return; }
+    localStorage.setItem(TOKEN_KEY, value);
+    el('token-input').value = '';
+    renderTokenState();
+    refreshAll();
+    toast('トークンを保存しました');
+  });
+  el('token-clear').addEventListener('click', () => {
+    localStorage.removeItem(TOKEN_KEY);
+    el('token-input').value = '';
+    renderTokenState();
+    refreshAll();
+    toast('トークンを削除しました');
+  });
+
+  // ── 通知 ──
+  let toastTimer = null;
+  function toast(message, isError) {
+    const box = el('toast');
+    box.textContent = message;
+    box.className = isError ? 'error' : '';
+    box.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { box.style.display = 'none'; }, isError ? 8000 : 4000);
+  }
+
+  // ── 編集操作 ──
+  // capture で先に拾う。ここで再描画するとボタンが DOM から外れ、
+  // Leaflet の「ポップアップ内クリックか」の判定（親を辿る）が失敗して
+  // 地図がポップアップを閉じてしまうため、伝播もここで止める。
+  document.addEventListener('click', ev => {
+    const button = ev.target.closest('button[data-act]');
+    if (!button) return;
+    const r = restaurants[Number(button.dataset.i)];
+    if (!r) return;
+    ev.stopPropagation();
+    if (button.dataset.act === 'visit-inc')  applyEdit(r, r.visits + 1, r.rating);
+    if (button.dataset.act === 'visit-dec')  applyEdit(r, Math.max(0, r.visits - 1), r.rating);
+    if (button.dataset.act === 'rate')       applyEdit(r, r.visits, Number(button.dataset.value));
+    if (button.dataset.act === 'rate-clear') applyEdit(r, r.visits, null);
+  }, true);
+
+  /** 画面を先に更新し、restaurants.md への書き込みが失敗したら戻す。 */
+  function applyEdit(r, visits, rating) {
+    if (visits === r.visits && rating === r.rating) return;
+    const before = { visits: r.visits, rating: r.rating };
+    r.visits = visits;
+    r.rating = rating;
+    refreshStore(r);
+    enqueue(async () => {
+      try {
+        await writeRow(r);
+        toast(`${r.name} を保存しました。地図データの反映まで1分ほどかかります`);
+      } catch (e) {
+        r.visits = before.visits;
+        r.rating = before.rating;
+        refreshStore(r);
+        toast(`保存できませんでした: ${e.message}`, true);
+      }
+    });
+  }
+
+  function refreshMarker(r) {
+    const entry = markers.find(m => m.r === r);
+    if (!entry) return;
+    const visited = r.visits > 0;
+    if (visited !== entry.visited) {
+      entry.visited = visited;
+      // setIcon は bindPopup をやり直すので、開いていたポップアップが閉じてしまう
+      const wasOpen = entry.marker.isPopupOpen();
+      entry.marker.setIcon(makeIcon(visited));
+      if (wasOpen) entry.marker.openPopup();
+    }
+    entry.marker.setPopupContent(detailHtml(r));
+  }
+
+  function refreshStore(r) {
+    refreshMarker(r);
+    renderList();
+  }
+
+  function refreshAll() {
+    for (const { r } of markers) refreshMarker(r);
+    renderList();
+  }
+
+  // ── restaurants.md への書き込み ──────────────────────────────
+  // sha 付きの PUT なので、他所の更新と衝突したら 409/422 が返る。
+  // その場合だけ読み直して一度やり直す。
+  let writeQueue = Promise.resolve();
+  function enqueue(task) {
+    const run = writeQueue.then(task, task);
+    writeQueue = run.catch(() => {});
+    return run;
+  }
+
+  async function writeRow(r) {
+    try {
+      await writeRowOnce(r);
+    } catch (e) {
+      if (!e.conflict) throw e;
+      await writeRowOnce(r);
+    }
+  }
+
+  async function writeRowOnce(r) {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) throw new Error('トークンが設定されていません');
+    const url = `https://api.github.com/repos/${REPO}/contents/${encodeURIComponent(MD_PATH)}`;
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    };
+
+    const got = await fetch(url, { headers, cache: 'no-store' });
+    if (!got.ok) throw new Error(await errorText(got));
+    const file = await got.json();
+
+    const body = JSON.stringify({
+      message: `${r.name}: 来店${r.visits}回 / 評価${r.rating == null ? '-' : r.rating}`,
+      content: toBase64(replaceRow(fromBase64(file.content), r)),
+      sha: file.sha,
+    });
+    const put = await fetch(url, { method: 'PUT', headers, body });
+    if (!put.ok) {
+      const err = new Error(await errorText(put));
+      err.conflict = put.status === 409 || put.status === 422;
+      throw err;
+    }
+  }
+
+  async function errorText(res) {
+    if (res.status === 401 || res.status === 403) return `認証エラー (HTTP ${res.status})。トークンの権限を確認してください`;
+    let detail = '';
+    try { detail = (await res.json()).message || ''; } catch {}
+    return `HTTP ${res.status}${detail ? ` ${detail}` : ''}`;
+  }
+
+  function splitRow(line) {
+    return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+  }
+
+  /** 店名と住所が一致する行の来店回数（7列目）と評価（8列目）だけ差し替える。 */
+  function replaceRow(markdown, r) {
+    const lines = markdown.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (!lines[i].trim().startsWith('|')) continue;
+      const cells = splitRow(lines[i]);
+      if (cells.length < 9 || cells[0] !== r.name || cells[3] !== r.address) continue;
+      cells[6] = String(r.visits);
+      cells[7] = r.rating == null ? '-' : String(r.rating);
+      lines[i] = `| ${cells.join(' | ')} |`;
+      return lines.join('\n');
+    }
+    throw new Error(`restaurants.md に「${r.name}」の行が見つかりません`);
+  }
+
+  function toBase64(text) {
+    const bytes = new TextEncoder().encode(text);
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  }
+
+  function fromBase64(base64) {
+    const binary = atob(base64.replace(/\s/g, ''));
+    return new TextDecoder().decode(Uint8Array.from(binary, c => c.charCodeAt(0)));
+  }
+
+  renderTokenState();
   render();
 
   // ── ユーティリティ ──

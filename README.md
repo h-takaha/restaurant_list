@@ -8,6 +8,21 @@
 
 座標は住所から国土地理院のジオコーダで引いている（APIキー不要）。位置がずれていたら `docs/data.json` の `lat` / `lng` を手で直せばよい。住所を書き換えない限り、その値が使われ続ける。
 
+## 来店回数と評価を地図から書き換える
+
+行った直後にスマホで記録できるよう、**来店回数と評価だけ**は地図の画面から直接更新できる。ピンかリストの「来店 +1」を押すと回数が増え、星をタップすると 0.5 刻みで評価が入る。他の列は編集できない。
+
+書き込み先は `restaurants.md` そのもの（GitHub Contents API 経由の commit）で、そのあとは通常どおり GitHub Actions が `docs/data.json` を作り直す。地図に反映されるまで1分ほどかかる。
+
+使うには GitHub のアクセストークンが要る。画面右上の ⚙ から登録する。
+
+- [Fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) を作る
+- Repository access は **restaurant_list のみ**、権限は **Contents: Read and write** だけ
+- トークンはブラウザの localStorage に入る。`h-takaha.github.io` には他のページも同居していて localStorage を共有するので、リポジトリを絞っていないトークンは使わない
+- 未設定なら閲覧専用になる。⚙ の「削除」でいつでも消せる
+
+画面はボタンを押した時点で先に書き換わり、commit に失敗した場合だけ元に戻してエラーを出す。
+
 ## 登録のしかた
 
 見つけた瞬間は **restaurant.map23@gmail.com へメールを送るだけ**。住所・HP・ジャンルの穴埋めは、あとでまとめて Claude が行う。この専用アドレスに届くものは全部お店なので、件名にタグを付けるといった約束事は要らない。受信箱に残っている＝未取り込み。

@@ -28,6 +28,19 @@ function parseMdLink(text) {
   return { label: m[1], url: m[2] };
 }
 
+/** 来店回数セル → 0 以上の整数。空欄・`-`・壊れた値は 0 とみなす。 */
+function parseVisits(text) {
+  const n = Number.parseInt((text ?? '').trim(), 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/** 評価セル → 1〜5 の数値。未評価（`-` など）は null。 */
+function parseRating(text) {
+  const n = Number.parseFloat((text ?? '').trim());
+  if (!Number.isFinite(n)) return null;
+  return Math.min(5, Math.max(0.5, n));
+}
+
 /** Sleep ms milliseconds */
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -75,7 +88,7 @@ const restaurants = dataLines
   .map(line => {
     const cells = line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
     if (cells.length < 9) return null;
-    const [name, genre, area, address, hpRaw, recommended, status, rating, memo] = cells;
+    const [name, genre, area, address, hpRaw, recommended, visitsRaw, ratingRaw, memo] = cells;
     const hpLink = parseMdLink(hpRaw);
     return {
       name,
@@ -85,8 +98,8 @@ const restaurants = dataLines
       hpUrl:   hpLink ? hpLink.url   : null,
       hpLabel: hpLink ? hpLink.label : (hpRaw && hpRaw !== '-' ? hpRaw : null),
       recommended: recommended && recommended !== '-' ? recommended : null,
-      status,
-      rating,
+      visits: parseVisits(visitsRaw),
+      rating: parseRating(ratingRaw),
       memo,
       lat: null,
       lng: null,

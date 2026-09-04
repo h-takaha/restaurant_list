@@ -2,3 +2,8 @@
 # checkout 時に CRLF へ変換され、ローカルで build するたび差分が出たように見えて
 # ff-only の pull が止まる。作業ツリーでも LF のままにしておく。
 docs/data.json text eol=lf
+
+# restaurants.md はアプリからも GitHub API 経由で書き換わる。API は渡した内容を
+# そのまま保存するので必ず LF になる。作業ツリーが CRLF だと、アプリで1件
+# 更新するたびに全行が差分として出てしまう。こちらも LF に固定する。
+restaurants.md text eol=lf
