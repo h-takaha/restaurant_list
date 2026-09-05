@@ -34,12 +34,25 @@ jobs:
 
       - name: 変更があれば commit
         run: |
-          if git diff --quiet -- docs/data.json; then
-            echo '座標に変更なし'
-            exit 0
-          fi
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/data.json
-          git commit -m '地図データの座標を再生成'
-          git push
+          # 地図の画面や routine が main を進めている最中は push が弾かれる。
+          # data.json は restaurants.md から全部作り直せるので、最新に合わせて
+          # 作り直してから入れ直す。
+          for attempt in 1 2 3 4 5; do
+            if git diff --quiet -- docs/data.json; then
+              echo '座標に変更なし'
+              exit 0
+            fi
+            git add docs/data.json
+            git commit -m '地図データの座標を再生成'
+            if git push; then
+              exit 0
+            fi
+            echo "::notice::push が弾かれた。最新の main で作り直す（${attempt}回目）"
+            git fetch origin main
+            git reset --hard FETCH_HEAD
+            node build.mjs
+          done
+          echo '::error::main が動き続けていて push できなかった'
+          exit 1
