@@ -494,8 +494,8 @@
     "visits": 0,
     "rating": null,
     "memo": "10:00〜翌2:00。年中無休",
-    "lat": null,
-    "lng": null
+    "lat": 43.999775,
+    "lng": 144.284363
   },
   {
     "name": "ラーメン山岡家 北見店",
@@ -511,8 +511,8 @@
     "visits": 0,
     "rating": null,
     "memo": "24時間営業。年中無休",
-    "lat": null,
-    "lng": null
+    "lat": 43.796577,
+    "lng": 143.864716
   },
   {
     "name": "ラーメン山岡家 美幌店",
@@ -528,7 +528,7 @@
     "visits": 0,
     "rating": null,
     "memo": "10:00〜翌2:00。年中無休",
-    "lat": null,
-    "lng": null
+    "lat": 43.817059,
+    "lng": 144.115005
   }
 ]
