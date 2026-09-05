@@ -479,5 +479,56 @@
     "memo": "11:00-22:00（L.O.21:45）。年中無休",
     "lat": 43.821785,
     "lng": 143.91037
+  },
+  {
+    "name": "ラーメン山岡家 網走店",
+    "tags": [
+      "麺",
+      "ラーメン"
+    ],
+    "area": "網走",
+    "address": "網走市駒場南7丁目2-2",
+    "hpUrl": "https://www.yamaokaya.com/shops/1144/",
+    "hpLabel": "公式",
+    "recommended": "豚骨醤油ラーメン",
+    "visits": 0,
+    "rating": null,
+    "memo": "10:00〜翌2:00。年中無休",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "ラーメン山岡家 北見店",
+    "tags": [
+      "麺",
+      "ラーメン"
+    ],
+    "area": "北見",
+    "address": "北見市光西町165",
+    "hpUrl": "https://www.yamaokaya.com/shops/1122.html",
+    "hpLabel": "公式",
+    "recommended": "豚骨醤油ラーメン",
+    "visits": 0,
+    "rating": null,
+    "memo": "24時間営業。年中無休",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "ラーメン山岡家 美幌店",
+    "tags": [
+      "麺",
+      "ラーメン"
+    ],
+    "area": "美幌",
+    "address": "網走郡美幌町字稲美68-18",
+    "hpUrl": "https://www.yamaokaya.com/shops/1130/",
+    "hpLabel": "公式",
+    "recommended": "豚骨醤油ラーメン",
+    "visits": 0,
+    "rating": null,
+    "memo": "10:00〜翌2:00。年中無休",
+    "lat": null,
+    "lng": null
   }
 ]
