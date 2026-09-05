@@ -1,7 +1,10 @@
 [
   {
     "name": "鳥若 北見総本店",
-    "genre": "焼き鳥",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
     "area": "北見",
     "address": "北見市北5条西2丁目 東宝ビル1F",
     "hpUrl": "https://life-v.co.jp/shop/toriwaka/",
@@ -15,7 +18,10 @@
   },
   {
     "name": "MILK CROWN",
-    "genre": "ジェラート",
+    "tags": [
+      "スイーツ",
+      "アイスクリーム"
+    ],
     "area": "北見・端野",
     "address": "北見市端野町三区366-5",
     "hpUrl": "https://milkcrown-ice.com/",
@@ -29,7 +35,10 @@
   },
   {
     "name": "海鮮家 魚政",
-    "genre": "海鮮居酒屋",
+    "tags": [
+      "居酒屋",
+      "海鮮"
+    ],
     "area": "北見",
     "address": "北見市北五条西4-11 ソシアルプラザビル1F",
     "hpUrl": "https://life-v.co.jp/shop/uomasa/",
@@ -43,7 +52,10 @@
   },
   {
     "name": "TumuLab（ツムラボ）/ 津村製麺所",
-    "genre": "ひやむぎ専門店",
+    "tags": [
+      "麺",
+      "ひやむぎ"
+    ],
     "area": "北見",
     "address": "北見市豊地26番地26",
     "hpUrl": "https://tumugu.tsumura-seimen.co.jp/",
@@ -57,7 +69,10 @@
   },
   {
     "name": "麺屋 かねもり",
-    "genre": "ラーメン",
+    "tags": [
+      "麺",
+      "ラーメン"
+    ],
     "area": "北見",
     "address": "北見市公園町71-1",
     "hpUrl": null,
@@ -71,7 +86,10 @@
   },
   {
     "name": "麺屋 中山商店",
-    "genre": "ラーメン",
+    "tags": [
+      "麺",
+      "ラーメン"
+    ],
     "area": "北見",
     "address": "北見市中央三輪9丁目11-16",
     "hpUrl": null,
@@ -85,7 +103,10 @@
   },
   {
     "name": "キャプテンラーメン東相内店",
-    "genre": "ラーメン",
+    "tags": [
+      "麺",
+      "ラーメン"
+    ],
     "area": "北見",
     "address": "北見市東相内町276-66",
     "hpUrl": "https://tabelog.com/hokkaido/A0110/A011003/1085079/",
@@ -99,7 +120,10 @@
   },
   {
     "name": "キャプテンラーメン北見店",
-    "genre": "ラーメン",
+    "tags": [
+      "麺",
+      "ラーメン"
+    ],
     "area": "北見",
     "address": "北見市北三条西2-10 オアシスビルB1F",
     "hpUrl": null,
@@ -113,7 +137,9 @@
   },
   {
     "name": "お食事処 一福",
-    "genre": "定食・食堂",
+    "tags": [
+      "定食"
+    ],
     "area": "置戸",
     "address": "常呂郡置戸町置戸117",
     "hpUrl": null,
@@ -127,7 +153,10 @@
   },
   {
     "name": "きたほのか",
-    "genre": "うどん",
+    "tags": [
+      "麺",
+      "うどん"
+    ],
     "area": "北見",
     "address": "北見市春光町3丁目1-3",
     "hpUrl": "https://kitahonoka.com/",
@@ -141,7 +170,9 @@
   },
   {
     "name": "遊食厨房 いっこん家",
-    "genre": "居酒屋",
+    "tags": [
+      "居酒屋"
+    ],
     "area": "北見",
     "address": "北見市東三輪3丁目22-5",
     "hpUrl": "https://ikkonya.jp/",
@@ -155,7 +186,9 @@
   },
   {
     "name": "中華料理 菜華",
-    "genre": "中華料理",
+    "tags": [
+      "中華"
+    ],
     "area": "北見",
     "address": "北見市大通西（北見パラボ6F）",
     "hpUrl": null,
@@ -169,7 +202,9 @@
   },
   {
     "name": "フレンチダイニング グラース",
-    "genre": "フレンチ",
+    "tags": [
+      "フレンチ"
+    ],
     "area": "美幌",
     "address": "網走郡美幌町東1条北2-17-1",
     "hpUrl": null,
@@ -183,7 +218,9 @@
   },
   {
     "name": "北味グルメランド 治助",
-    "genre": "居酒屋",
+    "tags": [
+      "居酒屋"
+    ],
     "area": "北見",
     "address": "北見市北5条西3丁目 ナシオビル1F",
     "hpUrl": null,
@@ -197,7 +234,9 @@
   },
   {
     "name": "焼肉 南門",
-    "genre": "焼肉",
+    "tags": [
+      "焼肉"
+    ],
     "area": "北見",
     "address": "北見市本町2-5-16",
     "hpUrl": null,
@@ -211,7 +250,9 @@
   },
   {
     "name": "あかつき",
-    "genre": "お好み焼き",
+    "tags": [
+      "お好み焼き"
+    ],
     "area": "北見",
     "address": "北見市高栄西町1丁目7-22",
     "hpUrl": null,
@@ -225,7 +266,9 @@
   },
   {
     "name": "板門店",
-    "genre": "焼肉",
+    "tags": [
+      "焼肉"
+    ],
     "area": "北見",
     "address": "北見市北7条西4丁目",
     "hpUrl": null,
@@ -239,7 +282,10 @@
   },
   {
     "name": "そばのかね久 総本店",
-    "genre": "そば",
+    "tags": [
+      "麺",
+      "そば"
+    ],
     "area": "美幌",
     "address": "網走郡美幌町新町2丁目9",
     "hpUrl": "https://www.kanekyu.com/",
@@ -253,7 +299,9 @@
   },
   {
     "name": "お食事処 フクヨシ",
-    "genre": "定食",
+    "tags": [
+      "定食"
+    ],
     "area": "訓子府",
     "address": "常呂郡訓子府町元町37",
     "hpUrl": null,
@@ -267,7 +315,9 @@
   },
   {
     "name": "焼肉 珍来",
-    "genre": "焼肉",
+    "tags": [
+      "焼肉"
+    ],
     "area": "美幌",
     "address": "網走郡美幌町字東1条北2丁目",
     "hpUrl": "https://chinrai.jimdofree.com/",
@@ -281,7 +331,9 @@
   },
   {
     "name": "赤ちょうちん",
-    "genre": "居酒屋",
+    "tags": [
+      "居酒屋"
+    ],
     "area": "美幌",
     "address": "網走郡美幌町字東1条北2丁目",
     "hpUrl": "https://tabelog.com/hokkaido/A0110/A011001/1018279/",
@@ -295,7 +347,10 @@
   },
   {
     "name": "さかなの金川",
-    "genre": "鮮魚・テイクアウト",
+    "tags": [
+      "海鮮",
+      "テイクアウト"
+    ],
     "area": "網走",
     "address": "網走市南4条西1-11",
     "hpUrl": null,
@@ -309,7 +364,10 @@
   },
   {
     "name": "ビッグサン 潮見店",
-    "genre": "回転寿司",
+    "tags": [
+      "寿司",
+      "海鮮"
+    ],
     "area": "網走",
     "address": "網走市潮見10丁目1-26",
     "hpUrl": "https://seiwa-dining.com/bigsun/",
@@ -323,7 +381,9 @@
   },
   {
     "name": "めし屋 和幸",
-    "genre": "定食・食堂",
+    "tags": [
+      "定食"
+    ],
     "area": "美幌",
     "address": "網走郡美幌町青山南30",
     "hpUrl": null,
@@ -337,7 +397,10 @@
   },
   {
     "name": "海鮮寿司くるくる 西富店",
-    "genre": "回転寿司",
+    "tags": [
+      "寿司",
+      "海鮮"
+    ],
     "area": "北見",
     "address": "北見市西富町1丁目1-30",
     "hpUrl": "https://mr-kurukuru.jp/",
@@ -351,7 +414,10 @@
   },
   {
     "name": "はま寿司 北見店",
-    "genre": "回転寿司",
+    "tags": [
+      "寿司",
+      "海鮮"
+    ],
     "area": "北見",
     "address": "北見市本町2-3-10",
     "hpUrl": "https://maps.hama-sushi.co.jp/jp/detail/4266.html",
@@ -365,7 +431,10 @@
   },
   {
     "name": "回転寿し トリトン 三輪店",
-    "genre": "回転寿司",
+    "tags": [
+      "寿司",
+      "海鮮"
+    ],
     "area": "北見",
     "address": "北見市東三輪4-12-20",
     "hpUrl": "https://toriton-kita1.jp/shop/miwa/",
@@ -379,7 +448,10 @@
   },
   {
     "name": "回転寿し トリトン 夕陽ケ丘店",
-    "genre": "回転寿司",
+    "tags": [
+      "寿司",
+      "海鮮"
+    ],
     "area": "北見",
     "address": "北見市美芳町2-5-1",
     "hpUrl": "https://toriton-kita1.jp/shop/yuhigaoka/",
@@ -393,7 +465,10 @@
   },
   {
     "name": "くるくる 柏陽店",
-    "genre": "回転寿司",
+    "tags": [
+      "寿司",
+      "海鮮"
+    ],
     "area": "北見",
     "address": "北見市柏陽町577番地14",
     "hpUrl": "https://mr-kurukuru.jp/tenpo_hakuyo.html",

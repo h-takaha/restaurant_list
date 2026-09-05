@@ -28,6 +28,14 @@ function parseMdLink(text) {
   return { label: m[1], url: m[2] };
 }
 
+/** タグセル → タグ配列。`/` 区切り。空欄・`-` は空配列。 */
+function parseTags(text) {
+  return (text ?? '')
+    .split('/')
+    .map(t => t.trim())
+    .filter(t => t !== '' && t !== '-');
+}
+
 /** 来店回数セル → 0 以上の整数。空欄・`-`・壊れた値は 0 とみなす。 */
 function parseVisits(text) {
   const n = Number.parseInt((text ?? '').trim(), 10);
@@ -88,11 +96,11 @@ const restaurants = dataLines
   .map(line => {
     const cells = line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
     if (cells.length < 9) return null;
-    const [name, genre, area, address, hpRaw, recommended, visitsRaw, ratingRaw, memo] = cells;
+    const [name, tagsRaw, area, address, hpRaw, recommended, visitsRaw, ratingRaw, memo] = cells;
     const hpLink = parseMdLink(hpRaw);
     return {
       name,
-      genre,
+      tags: parseTags(tagsRaw),
       area,
       address,
       hpUrl:   hpLink ? hpLink.url   : null,

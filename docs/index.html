@@ -109,8 +109,8 @@
     }
     #toast.error { background: rgba(185, 28, 28, 0.96); }
 
-    /* ── ジャンル絞り込み ── */
-    #genre-bar {
+    /* ── タグ絞り込み ── */
+    #tag-bar {
       flex: none;
       display: flex;
       gap: 6px;
@@ -119,7 +119,7 @@
       white-space: nowrap;
       border-bottom: 1px solid #e5e7eb;
     }
-    #genre-bar button {
+    #tag-bar button {
       flex: none;
       padding: 5px 13px;
       font: inherit;
@@ -130,10 +130,14 @@
       border-radius: 999px;
       cursor: pointer;
     }
-    #genre-bar button[aria-pressed="true"] {
+    #tag-bar button[aria-pressed="true"] {
       color: #fff;
       background: #2563eb;
       border-color: #2563eb;
+    }
+    #tag-bar button[disabled] {
+      opacity: .35;
+      cursor: default;
     }
 
     /* ── 地図ビュー ── */
@@ -153,21 +157,91 @@
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      padding: 8px;
       background: #f9fafb;
-    }
-    .card {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 12px 14px;
-      margin-bottom: 8px;
     }
     .empty {
       padding: 24px 0;
       text-align: center;
       color: #6b7280;
       font-size: 14px;
+    }
+
+    /* ── 店リスト 表 ── */
+    #restaurant-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    #restaurant-table thead th {
+      position: sticky;
+      top: 0;
+      background: #fff;
+      border-bottom: 2px solid #e5e7eb;
+      padding: 8px 10px;
+      text-align: left;
+      white-space: nowrap;
+      color: #374151;
+      font-weight: 600;
+      z-index: 10;
+    }
+    #restaurant-table tbody tr.data-row {
+      cursor: pointer;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    #restaurant-table tbody tr.data-row:hover {
+      background: #f3f4f6;
+    }
+    #restaurant-table tbody tr.data-row.open {
+      background: #eff6ff;
+    }
+    #restaurant-table tbody td {
+      padding: 8px 10px;
+      vertical-align: middle;
+      color: #374151;
+    }
+    #restaurant-table tbody td.col-name {
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    #restaurant-table tbody td.col-tags {
+      min-width: 80px;
+    }
+    #restaurant-table tbody td.col-area,
+    #restaurant-table tbody td.col-recommended,
+    #restaurant-table tbody td.col-rating,
+    #restaurant-table tbody td.col-visits {
+      white-space: nowrap;
+    }
+    /* 詳細行 */
+    #restaurant-table tbody tr.detail-row td {
+      padding: 0;
+      background: #eff6ff;
+      border-bottom: 2px solid #bfdbfe;
+    }
+    /* 表は列が多くて横スクロールする。住所やメモまで一緒に流れると読めないので、
+       詳細だけは左端に貼り付けて画面幅に収める。 */
+    #restaurant-table tbody tr.detail-row .detail-content {
+      position: sticky;
+      left: 0;
+      width: 100vw;
+      max-width: 100vw;
+      box-sizing: border-box;
+      padding: 10px 14px 14px;
+    }
+    /* タグチップ */
+    .tag-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .tag-chip {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 11px;
+      background: #e5e7eb;
+      color: #374151;
+      border-radius: 999px;
+      white-space: nowrap;
     }
 
     /* ── 凡例 ── */
@@ -212,20 +286,28 @@
       text-align: center;
     }
 
-    /* ── 店の詳細（ポップアップとリストで共用） ── */
+    /* ── 店の詳細（ポップアップとリスト詳細で共用） ── */
     .leaflet-popup-content {
       font-size: 14px;
       line-height: 1.6;
       min-width: 200px;
       max-width: 80vw;
     }
-    .leaflet-popup-content h3,
-    .card h3 {
+    .leaflet-popup-content h3 {
       font-size: 15px;
       margin-bottom: 4px;
     }
-    .leaflet-popup-content p,
-    .card p {
+    .leaflet-popup-content p {
+      margin: 2px 0;
+      color: #374151;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .detail-content h3 {
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+    .detail-content p {
       margin: 2px 0;
       color: #374151;
       font-size: 14px;
@@ -332,7 +414,7 @@
   </div>
 </div>
 
-<div id="genre-bar"></div>
+<div id="tag-bar"></div>
 
 <div id="map-view">
   <div id="map"></div>
@@ -413,7 +495,13 @@
       + `</span>`;
   }
 
-  // ── 店の詳細（ポップアップとリストで共用） ──
+  // ── タグチップの HTML ──
+  function tagChipsHtml(tags) {
+    if (!tags || tags.length === 0) return '';
+    return `<div class="tag-chips">${tags.map(t => `<span class="tag-chip">${escHtml(t)}</span>`).join('')}</div>`;
+  }
+
+  // ── 店の詳細（ポップアップとリスト詳細で共用） ──
   function detailHtml(r) {
     const i = restaurants.indexOf(r);
     const editable = hasToken();
@@ -423,9 +511,12 @@
     const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}`;
     const visitLabel = r.visits > 0 ? `来店 ${r.visits} 回` : '未訪問';
     const ratingLabel = r.rating == null ? '未評価' : r.rating.toFixed(1);
+    const tagsLine = (r.tags && r.tags.length > 0)
+      ? r.tags.map(t => escHtml(t)).join('・')
+      : '';
     return `
       <h3>${escHtml(r.name)}</h3>
-      <p>${escHtml(r.genre)}　<span class="muted">${visitLabel}</span></p>
+      <p>${tagsLine}　<span class="muted">${visitLabel}</span></p>
       ${r.recommended ? `<p>🍽 ${escHtml(r.recommended)}</p>` : ''}
       <p class="addr">${escHtml(r.address)}</p>
       <div class="edit">
@@ -444,6 +535,35 @@
       </div>`;
   }
 
+  // ── 詳細行の中身（表用。住所・HP・Gmaps・メモ・編集UI） ──
+  function rowDetailHtml(r) {
+    const i = restaurants.indexOf(r);
+    const editable = hasToken();
+    const hpHtml = r.hpUrl
+      ? `<a href="${escHtml(r.hpUrl)}" target="_blank" rel="noopener">${escHtml(r.hpLabel || '公式サイト')}</a>`
+      : '';
+    const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}`;
+    const ratingLabel = r.rating == null ? '未評価' : r.rating.toFixed(1);
+    return `<div class="detail-content">
+      <p class="addr">${escHtml(r.address)}</p>
+      ${r.memo ? `<p class="muted">${escHtml(r.memo)}</p>` : ''}
+      <div class="links">
+        ${hpHtml}
+        <a href="${gmapsUrl}" target="_blank" rel="noopener" class="gmaps">Google マップ</a>
+      </div>
+      ${editable ? `
+      <div class="edit">
+        ${starsHtml(i, r.rating, editable)}
+        <span class="muted">${ratingLabel}</span>
+        ${r.rating != null ? `<button data-act="rate-clear" data-i="${i}">評価を消す</button>` : ''}
+      </div>
+      <div class="edit">
+        <button class="visit" data-act="visit-inc" data-i="${i}">来店 +1</button>
+        <button data-act="visit-dec" data-i="${i}"${r.visits === 0 ? ' disabled' : ''}>−1</button>
+      </div>` : ''}
+    </div>`;
+  }
+
   // ── マーカー生成（座標のある店だけ。以後は出し入れするだけで作り直さない） ──
   const markers = [];
   for (const r of restaurants) {
@@ -453,26 +573,86 @@
     markers.push({ r, marker, visited: r.visits > 0 });
   }
 
-  // ── ジャンル絞り込み ──
-  let activeGenre = null; // null = すべて
+  // ── タグ絞り込み ──
+  // activeTags: 選択中タグの Set。空なら全件表示。AND 条件で絞り込む。
+  const activeTags = new Set();
 
-  const matches = r => activeGenre === null || r.genre === activeGenre;
+  // 選択中タグを全て持つ店か？
+  const matches = r => {
+    if (activeTags.size === 0) return true;
+    for (const t of activeTags) {
+      if (!r.tags || !r.tags.includes(t)) return false;
+    }
+    return true;
+  };
 
-  const genreBar = el('genre-bar');
-  function addGenreButton(label, value) {
-    const button = document.createElement('button');
-    button.textContent = label;
-    button.setAttribute('aria-pressed', String(activeGenre === value));
-    button.addEventListener('click', () => {
-      activeGenre = value;
-      for (const other of genreBar.children) other.setAttribute('aria-pressed', 'false');
-      button.setAttribute('aria-pressed', 'true');
+  // タグ一覧をデータから生成（件数の多い順、同数なら日本語ロケール順）
+  const tagCountMap = new Map();
+  for (const r of restaurants) {
+    for (const t of (r.tags || [])) {
+      tagCountMap.set(t, (tagCountMap.get(t) || 0) + 1);
+    }
+  }
+  const allTags = [...tagCountMap.keys()].sort((a, b) => {
+    const diff = tagCountMap.get(b) - tagCountMap.get(a);
+    return diff !== 0 ? diff : a.localeCompare(b, 'ja');
+  });
+
+  const tagBar = el('tag-bar');
+
+  function updateTagBar() {
+    // 現在の絞り込み結果
+    const currentHits = restaurants.filter(matches);
+
+    for (const btn of tagBar.children) {
+      const tag = btn.dataset.tag;
+      if (tag === undefined) {
+        // 「すべて」ボタン
+        btn.setAttribute('aria-pressed', String(activeTags.size === 0));
+        continue;
+      }
+      const pressed = activeTags.has(tag);
+      btn.setAttribute('aria-pressed', String(pressed));
+
+      if (pressed) {
+        // 選択中タグは常に押せる（解除できるように）
+        btn.disabled = false;
+      } else {
+        // このタグを追加したとき0件になるなら disabled
+        const wouldMatch = currentHits.filter(r => r.tags && r.tags.includes(tag));
+        btn.disabled = wouldMatch.length === 0;
+      }
+    }
+  }
+
+  // 「すべて」ボタン
+  const allBtn = document.createElement('button');
+  allBtn.textContent = 'すべて';
+  allBtn.setAttribute('aria-pressed', 'true');
+  allBtn.addEventListener('click', () => {
+    activeTags.clear();
+    updateTagBar();
+    render();
+  });
+  tagBar.appendChild(allBtn);
+
+  // 各タグボタン
+  for (const tag of allTags) {
+    const btn = document.createElement('button');
+    btn.textContent = tag;
+    btn.dataset.tag = tag;
+    btn.setAttribute('aria-pressed', 'false');
+    btn.addEventListener('click', () => {
+      if (activeTags.has(tag)) {
+        activeTags.delete(tag);
+      } else {
+        activeTags.add(tag);
+      }
+      updateTagBar();
       render();
     });
-    genreBar.appendChild(button);
+    tagBar.appendChild(btn);
   }
-  addGenreButton('すべて', null);
-  for (const genre of new Set(restaurants.map(r => r.genre))) addGenreButton(genre, genre);
 
   // ── 描画 ──
   function render() {
@@ -497,11 +677,50 @@
     banner.textContent = '座標未取得: ' + missing.join('、');
   }
 
+  const openRows = new Set();
+
   function renderList() {
     const hits = restaurants.filter(matches);
-    el('list-view').innerHTML = hits.length > 0
-      ? hits.map(r => `<article class="card">${detailHtml(r)}</article>`).join('')
-      : '<p class="empty">該当する店はありません</p>';
+    const listView = el('list-view');
+    if (hits.length === 0) {
+      listView.innerHTML = '<p class="empty">該当する店はありません</p>';
+      return;
+    }
+
+    let rows = '';
+    for (const r of hits) {
+      // data-i は restaurants 配列のインデックス（フィルタ後連番ではない）
+      const i = restaurants.indexOf(r);
+      const visitLabel = r.visits > 0 ? `${r.visits}` : '0';
+      const ratingLabel = r.rating == null ? '－' : r.rating.toFixed(1);
+      // 来店 +1 を押すと表を作り直すので、開いている行は覚えておいて開いたまま戻す
+      const open = openRows.has(i);
+      rows += `<tr class="data-row${open ? ' open' : ''}" data-i="${i}">
+        <td class="col-name">${escHtml(r.name)}</td>
+        <td class="col-tags">${tagChipsHtml(r.tags)}</td>
+        <td class="col-area">${escHtml(r.area)}</td>
+        <td class="col-recommended">${escHtml(r.recommended || '')}</td>
+        <td class="col-rating">${ratingLabel}</td>
+        <td class="col-visits">${visitLabel}</td>
+      </tr>
+      <tr class="detail-row"${open ? '' : ' style="display:none"'} data-detail-i="${i}">
+        <td colspan="6">${rowDetailHtml(r)}</td>
+      </tr>`;
+    }
+
+    listView.innerHTML = `<table id="restaurant-table">
+      <thead>
+        <tr>
+          <th>店名</th>
+          <th>タグ</th>
+          <th>エリア</th>
+          <th>オススメ</th>
+          <th>評価</th>
+          <th>来店</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
   }
 
   // ── タブ切り替え ──
@@ -569,16 +788,32 @@
   // capture で先に拾う。ここで再描画するとボタンが DOM から外れ、
   // Leaflet の「ポップアップ内クリックか」の判定（親を辿る）が失敗して
   // 地図がポップアップを閉じてしまうため、伝播もここで止める。
+  // 表の行開閉もこのハンドラの後処理として実行する（[data-act] のボタンが
+  // stopPropagation するので、行クリックハンドラには届かない）。
   document.addEventListener('click', ev => {
     const button = ev.target.closest('button[data-act]');
-    if (!button) return;
-    const r = restaurants[Number(button.dataset.i)];
-    if (!r) return;
-    ev.stopPropagation();
-    if (button.dataset.act === 'visit-inc')  applyEdit(r, r.visits + 1, r.rating);
-    if (button.dataset.act === 'visit-dec')  applyEdit(r, Math.max(0, r.visits - 1), r.rating);
-    if (button.dataset.act === 'rate')       applyEdit(r, r.visits, Number(button.dataset.value));
-    if (button.dataset.act === 'rate-clear') applyEdit(r, r.visits, null);
+    if (button) {
+      const r = restaurants[Number(button.dataset.i)];
+      if (!r) return;
+      ev.stopPropagation();
+      if (button.dataset.act === 'visit-inc')  applyEdit(r, r.visits + 1, r.rating);
+      if (button.dataset.act === 'visit-dec')  applyEdit(r, Math.max(0, r.visits - 1), r.rating);
+      if (button.dataset.act === 'rate')       applyEdit(r, r.visits, Number(button.dataset.value));
+      if (button.dataset.act === 'rate-clear') applyEdit(r, r.visits, null);
+      return;
+    }
+
+    // 表の行開閉（[data-act] のボタンは上で return しているので届かない）
+    const dataRow = ev.target.closest('tr.data-row');
+    if (dataRow) {
+      const i = dataRow.dataset.i;
+      const detailRow = dataRow.nextElementSibling;
+      if (!detailRow || !detailRow.classList.contains('detail-row')) return;
+      const isOpen = detailRow.style.display !== 'none';
+      detailRow.style.display = isOpen ? 'none' : '';
+      dataRow.classList.toggle('open', !isOpen);
+      if (isOpen) openRows.delete(Number(i)); else openRows.add(Number(i));
+    }
   }, true);
 
   /** 画面を先に更新し、restaurants.md への書き込みが失敗したら戻す。 */
@@ -710,6 +945,7 @@
   }
 
   renderTokenState();
+  updateTagBar();
   render();
 
   // ── ユーティリティ ──
