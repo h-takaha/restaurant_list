@@ -530,5 +530,439 @@
     "memo": "10:00〜翌2:00。年中無休",
     "lat": 43.817059,
     "lng": 144.115005
+  },
+  {
+    "name": "麺処 田楽",
+    "tags": [
+      "麺",
+      "ラーメン"
+    ],
+    "area": "音更",
+    "address": "河東郡音更町十勝川温泉北15丁目1",
+    "hpUrl": "http://o-dengaku.com/",
+    "hpLabel": "公式",
+    "recommended": "つけ麺",
+    "visits": 0,
+    "rating": null,
+    "memo": "月・水〜日・祝11:00-21:00。火曜定休",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "江戸そば丸吉",
+    "tags": [
+      "麺",
+      "そば"
+    ],
+    "area": "北見",
+    "address": "北見市西三輪1丁目644-21",
+    "hpUrl": "http://park7.wakwak.com/~soba/",
+    "hpLabel": "公式",
+    "recommended": "鴨南蛮",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "食事の店 のぶりん",
+    "tags": [
+      "麺",
+      "ラーメン"
+    ],
+    "area": "遠軽",
+    "address": "紋別郡遠軽町生田原安国97",
+    "hpUrl": "http://wwu.phoenix-c.or.jp/~mini/noburintop.html",
+    "hpLabel": "公式",
+    "recommended": "こがし醤油ラーメン",
+    "visits": 0,
+    "rating": null,
+    "memo": "11:00-14:00。月・木曜定休",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "らーめん縁",
+    "tags": [
+      "麺",
+      "ラーメン"
+    ],
+    "area": "北見",
+    "address": "北見市中央三輪2丁目313番地1",
+    "hpUrl": "https://www.ramen-enishi.com/",
+    "hpLabel": "公式",
+    "recommended": "縁味噌",
+    "visits": 0,
+    "rating": null,
+    "memo": "11:00-21:00（L.O.20:30）",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "かばと製麺所",
+    "tags": [
+      "麺",
+      "うどん"
+    ],
+    "area": "当別",
+    "address": "石狩郡当別町樺戸町355",
+    "hpUrl": "https://www.facebook.com/kabatoseimen/",
+    "hpLabel": "公式",
+    "recommended": "ぶっかけうどん",
+    "visits": 0,
+    "rating": null,
+    "memo": "11:00-15:00。冬季休業（12〜4月頃）",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "元祖美唄やきとり福よし すすきのどまんなか店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "札幌すすきの",
+    "address": "札幌市中央区南5条西3丁目 五条ビル1F",
+    "hpUrl": "https://www.fukuyoshi.tv/shop/susukino-domannaka/",
+    "hpLabel": "公式",
+    "recommended": "もつ串",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "元祖美唄やきとり福よし 札幌中央店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "札幌大通",
+    "address": "札幌市中央区北1条西5丁目 興銀ビル1階",
+    "hpUrl": "https://www.fukuyoshi.tv/shop/sapporo-chuo/",
+    "hpLabel": "公式",
+    "recommended": "もつ串",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "元祖美唄やきとり福よし 札幌駅西口店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "札幌駅",
+    "address": "札幌市北区北6条西6丁目1-1",
+    "hpUrl": "https://fukuyoshi-satsuekinishi.owst.jp/",
+    "hpLabel": "公式",
+    "recommended": "もつ串",
+    "visits": 0,
+    "rating": null,
+    "memo": "月〜土15:30-23:00（L.O.22:30）",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "元祖美唄やきとり 福よし 岩見沢店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "岩見沢",
+    "address": "岩見沢市2条西3丁目1-1 2・3ビル1階",
+    "hpUrl": "https://www.fukuyoshi.tv/shop/iwamizawa/",
+    "hpLabel": "公式",
+    "recommended": "もつ串",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "元祖美唄やきとり福よし 美唄本店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "美唄",
+    "address": "美唄市西1条南3丁目2-16",
+    "hpUrl": "https://www.fukuyoshi.tv/shop/bibai-honten/",
+    "hpLabel": "公式",
+    "recommended": "もつ串",
+    "visits": 0,
+    "rating": null,
+    "memo": "火〜日16:00-21:00",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "鳥貴族 すすきの店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "札幌すすきの",
+    "address": "札幌市中央区南4条西3丁目1-1 第3グリーンビル1F",
+    "hpUrl": "https://en.map.torikizoku.co.jp/detail/737/",
+    "hpLabel": "公式",
+    "recommended": "もも貴族焼き",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "鳥貴族 南4条西5丁目店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "札幌すすきの",
+    "address": "札幌市中央区南4条西5丁目5 GROOVE SUSUKINO BLD 2階",
+    "hpUrl": "https://map.torikizoku.co.jp/detail/822/",
+    "hpLabel": "公式",
+    "recommended": "もも貴族焼き",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "鳥貴族 狸小路2丁目店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "札幌大通",
+    "address": "札幌市中央区南3条西2丁目17-2 札幌エルムビル7階",
+    "hpUrl": "https://en.map.torikizoku.co.jp/detail/742/",
+    "hpLabel": "公式",
+    "recommended": "もも貴族焼き",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "鳥貴族 札幌駅南口店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "札幌駅",
+    "address": "札幌市中央区北4条西5丁目1番地 アスティ45ビル2F",
+    "hpUrl": "https://en.map.torikizoku.co.jp/detail/753/",
+    "hpLabel": "公式",
+    "recommended": "もも貴族焼き",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "鳥貴族 札幌ステラプレイス店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "札幌駅",
+    "address": "札幌市中央区北5条西2丁目 札幌ステラプレイス6階",
+    "hpUrl": "https://en.map.torikizoku.co.jp/detail/792/",
+    "hpLabel": "公式",
+    "recommended": "もも貴族焼き",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "鳥貴族 琴似店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "琴似",
+    "address": "札幌市西区琴似1条3丁目3-28 琴似1・3ビル4F",
+    "hpUrl": "https://en.map.torikizoku.co.jp/detail/764/",
+    "hpLabel": "公式",
+    "recommended": "もも貴族焼き",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "鳥貴族 シンサツBLOCK店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "新札幌",
+    "address": "札幌市厚別区厚別中央2条5丁目8番21号 シンサツBLOCK（B棟）1階",
+    "hpUrl": "https://en.map.torikizoku.co.jp/detail/788/",
+    "hpLabel": "公式",
+    "recommended": "もも貴族焼き",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "鳥貴族 麻生店",
+    "tags": [
+      "焼き鳥",
+      "居酒屋"
+    ],
+    "area": "麻生",
+    "address": "札幌市北区麻生町2丁目3番7号 ラ・ヴィータ麻生2階",
+    "hpUrl": "https://en.map.torikizoku.co.jp/detail/782/",
+    "hpLabel": "公式",
+    "recommended": "もも貴族焼き",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "サイゼリヤ 函館グランディールイチイ店",
+    "tags": [
+      "イタリアン"
+    ],
+    "area": "函館",
+    "address": "函館市美原1-3-1 グランディールイチイB1F",
+    "hpUrl": "https://www.saizeriya.co.jp/",
+    "hpLabel": "公式",
+    "recommended": "ミラノ風ドリア",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "サイゼリヤ イオン札幌西町店",
+    "tags": [
+      "イタリアン"
+    ],
+    "area": "発寒",
+    "address": "札幌市西区西町南6-1-1 イオン札幌西町1F",
+    "hpUrl": "https://www.saizeriya.co.jp/",
+    "hpLabel": "公式",
+    "recommended": "ミラノ風ドリア",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "サイゼリヤ 新札幌駅ビル店",
+    "tags": [
+      "イタリアン"
+    ],
+    "area": "新札幌",
+    "address": "札幌市厚別区厚別中央二条5-6-2 Duo-1 5F",
+    "hpUrl": "https://www.saizeriya.co.jp/",
+    "hpLabel": "公式",
+    "recommended": "ミラノ風ドリア",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "サイゼリヤ インターヴィレッジ大曲店",
+    "tags": [
+      "イタリアン"
+    ],
+    "area": "北広島",
+    "address": "北広島市大曲幸町6-1 インターヴィレッジ大曲1F",
+    "hpUrl": "https://www.saizeriya.co.jp/",
+    "hpLabel": "公式",
+    "recommended": "ミラノ風ドリア",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "サイゼリヤ イオン千歳店",
+    "tags": [
+      "イタリアン"
+    ],
+    "area": "千歳",
+    "address": "千歳市栄町6-51 イオン千歳1F",
+    "hpUrl": "https://shop.saizeriya.co.jp/sz_restaurant/spot/detail?code=1481",
+    "hpLabel": "公式",
+    "recommended": "ミラノ風ドリア",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "サイゼリヤ イオンモール苫小牧店",
+    "tags": [
+      "イタリアン"
+    ],
+    "area": "苫小牧",
+    "address": "苫小牧市柳町3-1-20 イオンモール苫小牧1F",
+    "hpUrl": "https://shop.saizeriya.co.jp/sz_restaurant/spot/detail?code=1386",
+    "hpLabel": "公式",
+    "recommended": "ミラノ風ドリア",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "サイゼリヤ イオンモール旭川駅前店",
+    "tags": [
+      "イタリアン"
+    ],
+    "area": "旭川",
+    "address": "旭川市宮下通7丁目2番5号",
+    "hpUrl": "https://shop.saizeriya.co.jp/sz_restaurant/spot/detail?code=1573",
+    "hpLabel": "公式",
+    "recommended": "ミラノ風ドリア",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
+  },
+  {
+    "name": "サイゼリヤ イオンモール旭川西店",
+    "tags": [
+      "イタリアン"
+    ],
+    "area": "旭川",
+    "address": "旭川市緑町23-2161-3 イオンモール旭川西1F",
+    "hpUrl": "https://shop.saizeriya.co.jp/sz_restaurant/spot/detail?code=1535",
+    "hpLabel": "公式",
+    "recommended": "ミラノ風ドリア",
+    "visits": 0,
+    "rating": null,
+    "memo": "",
+    "lat": null,
+    "lng": null
   }
 ]
