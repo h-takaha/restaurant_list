@@ -545,8 +545,8 @@
     "visits": 0,
     "rating": null,
     "memo": "月・水〜日・祝11:00-21:00。火曜定休",
-    "lat": null,
-    "lng": null
+    "lat": 42.933147,
+    "lng": 143.302856
   },
   {
     "name": "江戸そば丸吉",
@@ -562,8 +562,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.798538,
+    "lng": 143.83873
   },
   {
     "name": "食事の店 のぶりん",
@@ -579,8 +579,8 @@
     "visits": 0,
     "rating": null,
     "memo": "11:00-14:00。月・木曜定休",
-    "lat": null,
-    "lng": null
+    "lat": 43.973167,
+    "lng": 143.496719
   },
   {
     "name": "らーめん縁",
@@ -596,8 +596,8 @@
     "visits": 0,
     "rating": null,
     "memo": "11:00-21:00（L.O.20:30）",
-    "lat": null,
-    "lng": null
+    "lat": 43.801895,
+    "lng": 143.851517
   },
   {
     "name": "かばと製麺所",
@@ -613,8 +613,8 @@
     "visits": 0,
     "rating": null,
     "memo": "11:00-15:00。冬季休業（12〜4月頃）",
-    "lat": null,
-    "lng": null
+    "lat": 43.217617,
+    "lng": 141.531601
   },
   {
     "name": "元祖美唄やきとり福よし すすきのどまんなか店",
@@ -630,8 +630,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.054253,
+    "lng": 141.354477
   },
   {
     "name": "元祖美唄やきとり福よし 札幌中央店",
@@ -647,8 +647,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.061985,
+    "lng": 141.349289
   },
   {
     "name": "元祖美唄やきとり福よし 札幌駅西口店",
@@ -664,8 +664,8 @@
     "visits": 0,
     "rating": null,
     "memo": "月〜土15:30-23:00（L.O.22:30）",
-    "lat": null,
-    "lng": null
+    "lat": 43.068222,
+    "lng": 141.346115
   },
   {
     "name": "元祖美唄やきとり 福よし 岩見沢店",
@@ -681,8 +681,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.203922,
+    "lng": 141.762924
   },
   {
     "name": "元祖美唄やきとり福よし 美唄本店",
@@ -698,8 +698,8 @@
     "visits": 0,
     "rating": null,
     "memo": "火〜日16:00-21:00",
-    "lat": null,
-    "lng": null
+    "lat": 43.329128,
+    "lng": 141.857361
   },
   {
     "name": "鳥貴族 すすきの店",
@@ -715,8 +715,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.055405,
+    "lng": 141.354202
   },
   {
     "name": "鳥貴族 南4条西5丁目店",
@@ -732,8 +732,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.05558,
+    "lng": 141.350922
   },
   {
     "name": "鳥貴族 狸小路2丁目店",
@@ -749,8 +749,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.057285,
+    "lng": 141.355255
   },
   {
     "name": "鳥貴族 札幌駅南口店",
@@ -766,8 +766,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.066151,
+    "lng": 141.348251
   },
   {
     "name": "鳥貴族 札幌ステラプレイス店",
@@ -783,8 +783,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.067902,
+    "lng": 141.352829
   },
   {
     "name": "鳥貴族 琴似店",
@@ -800,8 +800,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.077656,
+    "lng": 141.305328
   },
   {
     "name": "鳥貴族 シンサツBLOCK店",
@@ -817,8 +817,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.039223,
+    "lng": 141.470291
   },
   {
     "name": "鳥貴族 麻生店",
@@ -834,8 +834,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.109283,
+    "lng": 141.338455
   },
   {
     "name": "サイゼリヤ 函館グランディールイチイ店",
@@ -850,8 +850,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 41.813755,
+    "lng": 140.758545
   },
   {
     "name": "サイゼリヤ イオン札幌西町店",
@@ -866,8 +866,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.078339,
+    "lng": 141.28978
   },
   {
     "name": "サイゼリヤ 新札幌駅ビル店",
@@ -882,8 +882,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.038906,
+    "lng": 141.471161
   },
   {
     "name": "サイゼリヤ インターヴィレッジ大曲店",
@@ -898,8 +898,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 42.969116,
+    "lng": 141.469772
   },
   {
     "name": "サイゼリヤ イオン千歳店",
@@ -914,8 +914,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 42.828999,
+    "lng": 141.64827
   },
   {
     "name": "サイゼリヤ イオンモール苫小牧店",
@@ -930,8 +930,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 42.657063,
+    "lng": 141.640335
   },
   {
     "name": "サイゼリヤ イオンモール旭川駅前店",
@@ -946,8 +946,8 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.76445,
+    "lng": 142.358063
   },
   {
     "name": "サイゼリヤ イオンモール旭川西店",
@@ -962,7 +962,7 @@
     "visits": 0,
     "rating": null,
     "memo": "",
-    "lat": null,
-    "lng": null
+    "lat": 43.794594,
+    "lng": 142.325775
   }
 ]
