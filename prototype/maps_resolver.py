@@ -234,10 +234,71 @@ def resolve(url: str, *, headless: bool = True, timeout_ms: int = 30000) -> Plac
         return session.place(url)
 
 
+def _verdict(place: Place) -> int:
+    """セレクタが実物の DOM に当たっているかを人が読める形で出す。"""
+    rows = [
+        ("店名", place.name, True),
+        ("住所", place.address, True),
+        ("座標", f"{place.lat}, {place.lng}" if place.lat else None, True),
+        ("公式サイト", place.website, False),
+        ("電話", place.phone, False),
+        ("営業時間", "／".join(place.hours) if place.hours else None, False),
+    ]
+    print(f"\n解決先: {place.resolved_url}\n")
+    for label, value, required in rows:
+        mark = "OK  " if value else ("NG  " if required else "--  ")
+        print(f"  {mark}{label}: {value if value else '取れなかった'}")
+
+    missing = [label for label, value, required in rows if required and not value]
+    print()
+    if missing:
+        print(f"セレクタが実物に当たっていない: {'、'.join(missing)}")
+        print("--debug を付けて実行し、出力をそのまま渡してもらえれば直せます。")
+        return 1
+    print("必須項目（店名・住所・座標）は取れています。セレクタは生きています。")
+    if not place.hours:
+        print("営業時間だけ取れていません。メモが薄くなるだけで、取り込みは動きます。")
+    return 0
+
+
+def _debug_dump(url: str) -> None:
+    """実物の DOM に何があるかを並べる。セレクタを直すための材料。"""
+    executable = os.environ.get("PLAYWRIGHT_CHROMIUM_PATH") or None
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True, executable_path=executable)
+        page = browser.new_context(locale="ja-JP", timezone_id="Asia/Tokyo").new_page()
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            _dismiss_consent(page)
+            page.wait_for_timeout(3000)
+            print(f"\n最終 URL: {page.url}\n")
+            print("--- h1 ---")
+            for h in page.query_selector_all("h1")[:5]:
+                print(f"  {h.inner_text()[:80]!r}")
+            print("\n--- data-item-id を持つ要素 ---")
+            for el in page.query_selector_all("[data-item-id]")[:25]:
+                print(f"  data-item-id={el.get_attribute('data-item-id')!r}  "
+                      f"aria-label={(el.get_attribute('aria-label') or '')[:60]!r}")
+            print("\n--- aria-label に「時間」を含む要素 ---")
+            for el in page.query_selector_all('[aria-label*="時間"]')[:10]:
+                print(f"  <{el.evaluate('e => e.tagName')}> "
+                      f"aria-label={(el.get_attribute('aria-label') or '')[:60]!r}")
+        finally:
+            browser.close()
+
+
 if __name__ == "__main__":
-    import json
     import sys
 
-    if len(sys.argv) < 2:
-        raise SystemExit("usage: python maps_resolver.py <google-maps-url>")
-    print(json.dumps(resolve(sys.argv[1]).to_dict(), ensure_ascii=False, indent=2))
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if not args:
+        raise SystemExit(
+            "usage: python maps_resolver.py <google-maps-url> [--debug] [--headful]"
+        )
+
+    if "--debug" in sys.argv:
+        _debug_dump(args[0])
+        raise SystemExit(0)
+
+    place = resolve(args[0], headless="--headful" not in sys.argv)
+    raise SystemExit(_verdict(place))
