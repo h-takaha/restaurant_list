@@ -230,16 +230,29 @@ def _read_hours(page, say=None) -> list[str] | None:
     """
     # 待つ対象は曜日ごとのコピー用ボタン。節の見出し <span aria-label="営業時間"> は
     # 最初から在るので、それを待つと素通りしてしまう（実際それで取りこぼしていた）。
-    # state="attached" が要る。既定は "visible" で、コピー用ボタンは DOM には
-    # 在るが非表示なので、既定のままだと必ずタイムアウトする。それでも結果的に
-    # 表が描けていたのは、空振りの待ちがスリープとして働いていただけだった。
+    # 待つ対象は「欲しいデータそのもの」にする。ここは2度外した:
+    #   1. <span aria-label="営業時間"> は節の見出しで最初から在るので素通りした
+    #   2. コピー用ボタンは非表示なので既定の "visible" では必ずタイムアウトし、
+    #      その空振りがスリープとして働いて偶然うまくいっていた。state="attached"
+    #      にしたら今度は早すぎて、ボタンは付いたが表はまだという瞬間に読んだ
+    # 曜日で始まる行が表に現れたか、コピー用ボタンが3つ以上付いたかを直接見る。
     say = say or (lambda *_: None)
     try:
-        page.wait_for_selector('[aria-label*="営業時間をコピー"]',
-                               state="attached", timeout=8000)
-        say("営業時間が描かれた")
+        page.wait_for_function(
+            """() => {
+                const day = /^[月火水木金土日]曜日/;
+                const row = [...document.querySelectorAll('table tr')].some(tr => {
+                    const cell = tr.querySelector('td, th');
+                    return cell && day.test((cell.innerText || '').trim());
+                });
+                const labels = document.querySelectorAll(
+                    '[aria-label*="営業時間をコピー"]').length;
+                return row || labels >= 3;
+            }""",
+            timeout=8000)
+        say("営業時間のデータが揃った")
     except PWTimeout:
-        say("営業時間は8秒待っても現れなかった")
+        say("営業時間は8秒待っても揃わなかった")
 
     hours = _hours_from_table(page, say)
     if not hours:

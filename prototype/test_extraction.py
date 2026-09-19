@@ -217,6 +217,32 @@ def test_hours_hidden_buttons(tmp: Path) -> None:
           ["月曜日 10:30～19:30", "火曜日 10:30～19:30", "水曜日 10:30～19:30"])
 
 
+def test_hours_table_arrives_late(tmp: Path) -> None:
+    """ボタンは先に DOM に付き、表は遅れて描かれる。表が出るまで待てるか。
+
+    待つ対象を間違えて2度外した箇所:
+      1. <span aria-label="営業時間"> は節の見出しで最初から在り、素通りした
+      2. コピー用ボタンを state="attached" で待ったら、ボタンは付いたが表は
+         まだという瞬間に読んで営業時間が消えた（実機で再現）
+    欲しいデータ（曜日で始まる表の行）そのものを待つ。
+    """
+    print("\n[表が遅れて描かれるページ]")
+    page = tmp / "late.html"
+    rows = "".join(f"<tr><td>{d}</td><td>11:00～14:30</td></tr>"
+                   for d in ("月曜日", "火曜日", "水曜日"))
+    page.write_text(
+        '<!doctype html><meta charset="utf-8"><h1>麺屋 蘭奢待</h1>'
+        '<button aria-label="月曜日、11時00分～14時30分、営業時間をコピーします"'
+        ' style="display:none"></button>'
+        f'<script>setTimeout(() => document.body.insertAdjacentHTML('
+        f'"beforeend", "<table>{rows}</table>"), 2000);</script>',
+        encoding="utf-8")
+
+    place = maps_resolver.resolve(page.as_uri())
+    check("遅れて出た表を読める", place.hours,
+          ["月曜日 11:00～14:30", "火曜日 11:00～14:30", "水曜日 11:00～14:30"])
+
+
 def test_hours_today_only(tmp: Path) -> None:
     """今日1日ぶんしか無いなら書かない。半端な営業時間は誤解を招く。"""
     print("\n[今日ぶんしか取れない場合]")
@@ -602,6 +628,7 @@ if __name__ == "__main__":
         test_hours_from_aria_labels(tmp)
         test_hours_tidying_real_data()
         test_hours_hidden_buttons(tmp)
+        test_hours_table_arrives_late(tmp)
         test_hours_today_only(tmp)
         test_search_accepts_search_url()
         test_missing_fields(tmp)
