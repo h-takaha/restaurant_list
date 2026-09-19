@@ -69,14 +69,33 @@ class FakeGmail:
 
 
 class FakeMaps:
-    """thread_id → Place。None なら店を特定できなかったことにする。"""
+    """URL → Place、店名 → Place。None なら特定できなかったことにする。"""
 
-    def __init__(self, table: dict[str, Place | None]) -> None:
-        self.table = table
-        self.current: str | None = None
+    def __init__(self, by_url: dict[str, Place] | None = None,
+                 by_query: dict[str, Place | None] | None = None,
+                 site_text: str | None = None) -> None:
+        self.by_url = by_url or {}
+        self.by_query = by_query or {}
+        self.site_text = site_text
+        self.searched: list[str] = []
+        self.fetched: list[str] = []
 
     def pick_maps_url(self, urls): return urls[0] if urls else None
-    def resolve(self, url, **kw): return self.table.get(self.current) or Place()
+
+    # run.py は maps_resolver.Session() を with で使う
+    def Session(self, **kw): return self
+    def __enter__(self): return self
+    def __exit__(self, *exc): return None
+
+    def place(self, url): return self.by_url.get(url) or Place()
+
+    def search(self, name):
+        self.searched.append(name)
+        return self.by_query.get(name)
+
+    def text(self, url, max_chars=4000):
+        self.fetched.append(url)
+        return self.site_text
 
 
 class FakeTagger:
@@ -125,37 +144,39 @@ def drive(repo: Path, gmail: FakeGmail, maps: FakeMaps, tagger: FakeTagger,
           git: FakeGit, argv: list[str]) -> int:
     """run.main() を差し替えた層の上で動かす。"""
     original = (run.REPO, run.gmail_client, run.maps_resolver, run.git, run.tagger_for, sys.argv)
-
-    # build_place は maps_resolver 越しに呼ばれるので、どのメールを処理中か伝える
-    real_build_place = run.build_place
-
-    def build_place(mail):
-        maps.current = mail.thread_id
-        return real_build_place(mail)
-
     run.REPO = repo
     run.gmail_client = gmail
     run.maps_resolver = maps
     run.git = git
     run.tagger_for = lambda kind: tagger
-    run.build_place = build_place
     sys.argv = ["run.py"] + argv
     try:
         return run.main()
     finally:
         (run.REPO, run.gmail_client, run.maps_resolver, run.git,
          run.tagger_for, sys.argv) = original
-        run.build_place = real_build_place
 
 
 def rows_of(repo: Path) -> list:
     return restaurants_md.read_rows(repo / "restaurants.md")
 
 
+URL_A, URL_B = "https://maps.app.goo.gl/a", "https://maps.app.goo.gl/b"
+
 KNOWN = Place(name="ラーメン山岡家 北見店", address="北見市光西町165")
 NEW = Place(name="新しいラーメン店", address="北見市北1条西1-1",
             website="https://example.com", lat=43.8, lng=143.9,
             hours=["月曜日 11:00～21:00"])
+NO_ADDRESS = Place(name="住所の取れない店", lat=43.8, lng=143.9)
+
+
+def mail_with_map(tid: str = "t1", subject: str = "新しいラーメン店",
+                  url: str = URL_A) -> FakeMail:
+    return FakeMail(tid, subject, [url])
+
+
+def mail_without_map(tid: str = "t1", subject: str = "新しいラーメン店") -> FakeMail:
+    return FakeMail(tid, subject, [])
 
 
 # ── 検証 ─────────────────────────────────────────────────────────────────────
@@ -165,7 +186,7 @@ def test_empty_inbox(tmp: Path) -> None:
     repo = make_repo(tmp / "empty")
     before = (repo / "restaurants.md").read_text(encoding="utf-8")
     gmail = FakeGmail([])
-    code = drive(repo, gmail, FakeMaps({}), FakeTagger(), FakeGit(), ["--apply", "--push"])
+    code = drive(repo, gmail, FakeMaps(), FakeTagger(), FakeGit(), ["--apply", "--push"])
     check("exit 0", code, 0)
     check("restaurants.md は無変更", (repo / "restaurants.md").read_text(encoding="utf-8"), before)
     check("何もアーカイブしない", gmail.archived, [])
@@ -175,8 +196,8 @@ def test_dry_run(tmp: Path) -> None:
     print("\n[dry-run]")
     repo = make_repo(tmp / "dry")
     before = (repo / "restaurants.md").read_text(encoding="utf-8")
-    gmail = FakeGmail([FakeMail("t1", "新しいラーメン店", ["https://maps.app.goo.gl/a"])])
-    drive(repo, gmail, FakeMaps({"t1": NEW}), FakeTagger(), FakeGit(), [])
+    gmail = FakeGmail([mail_with_map()])
+    drive(repo, gmail, FakeMaps({URL_A: NEW}), FakeTagger(), FakeGit(), [])
     check("restaurants.md に書かない", (repo / "restaurants.md").read_text(encoding="utf-8"), before)
     check("アーカイブしない", gmail.archived, [])
     check("メールは受信箱に残る", gmail.remaining, ["t1"])
@@ -188,7 +209,7 @@ def test_unidentifiable_stays(tmp: Path) -> None:
     n_before = len(rows_of(repo))
     # 件名が空、マップ URL も無い → 特定できない
     gmail = FakeGmail([FakeMail("t1", "", [])])
-    drive(repo, gmail, FakeMaps({"t1": None}), FakeTagger(), FakeGit(), ["--apply", "--push"])
+    drive(repo, gmail, FakeMaps(), FakeTagger(), FakeGit(), ["--apply", "--push"])
     check("行は増えない", len(rows_of(repo)), n_before)
     check("アーカイブしない", gmail.archived, [])
     check("受信箱に残る（＝未処理）", gmail.remaining, ["t1"])
@@ -198,8 +219,8 @@ def test_not_confident_stays(tmp: Path) -> None:
     print("\n[材料が足りないと判断した場合]")
     repo = make_repo(tmp / "unsure")
     n_before = len(rows_of(repo))
-    gmail = FakeGmail([FakeMail("t1", "新しいラーメン店", ["https://maps.app.goo.gl/a"])])
-    drive(repo, gmail, FakeMaps({"t1": NEW}), FakeTagger(confident=False), FakeGit(),
+    gmail = FakeGmail([mail_with_map()])
+    drive(repo, gmail, FakeMaps({URL_A: NEW}), FakeTagger(confident=False), FakeGit(),
           ["--apply", "--push"])
     check("行は増えない", len(rows_of(repo)), n_before)
     check("受信箱に残る", gmail.remaining, ["t1"])
@@ -209,8 +230,8 @@ def test_already_listed(tmp: Path) -> None:
     print("\n[既に載っている店]")
     repo = make_repo(tmp / "dupe")
     n_before = len(rows_of(repo))
-    gmail = FakeGmail([FakeMail("t1", "ラーメン山岡家 北見店", ["https://maps.app.goo.gl/a"])])
-    drive(repo, gmail, FakeMaps({"t1": KNOWN}), FakeTagger(), FakeGit(), ["--apply", "--push"])
+    gmail = FakeGmail([mail_with_map(subject="ラーメン山岡家 北見店")])
+    drive(repo, gmail, FakeMaps({URL_A: KNOWN}), FakeTagger(), FakeGit(), ["--apply", "--push"])
     check("行を足さない", len(rows_of(repo)), n_before)
     check("メールはアーカイブする", gmail.archived, ["t1"])
 
@@ -218,8 +239,8 @@ def test_already_listed(tmp: Path) -> None:
 def test_push_failure_blocks_archive(tmp: Path) -> None:
     print("\n[push に失敗した場合] ★最重要")
     repo = make_repo(tmp / "pushfail")
-    gmail = FakeGmail([FakeMail("t1", "新しいラーメン店", ["https://maps.app.goo.gl/a"])])
-    code = drive(repo, gmail, FakeMaps({"t1": NEW}), FakeTagger(), FakeGit(push_ok=False),
+    gmail = FakeGmail([mail_with_map()])
+    code = drive(repo, gmail, FakeMaps({URL_A: NEW}), FakeTagger(), FakeGit(push_ok=False),
                  ["--apply", "--push"])
     check("非ゼロで終了", code, 1)
     check("1件もアーカイブしない", gmail.archived, [])
@@ -231,11 +252,11 @@ def test_success_path(tmp: Path) -> None:
     repo = make_repo(tmp / "ok")
     n_before = len(rows_of(repo))
     gmail = FakeGmail([
-        FakeMail("t1", "新しいラーメン店", ["https://maps.app.goo.gl/a"]),
-        FakeMail("t2", "ラーメン山岡家 北見店", ["https://maps.app.goo.gl/b"]),
+        mail_with_map(),
+        mail_with_map("t2", "ラーメン山岡家 北見店", URL_B),
     ])
     git = FakeGit()
-    code = drive(repo, gmail, FakeMaps({"t1": NEW, "t2": KNOWN}), FakeTagger(), git,
+    code = drive(repo, gmail, FakeMaps({URL_A: NEW, URL_B: KNOWN}), FakeTagger(), git,
                  ["--apply", "--push"])
     check("exit 0", code, 0)
 
@@ -259,8 +280,8 @@ def test_coords_written(tmp: Path) -> None:
     import json
 
     repo = make_repo(tmp / "coords")
-    gmail = FakeGmail([FakeMail("t1", "新しいラーメン店", ["https://maps.app.goo.gl/a"])])
-    drive(repo, gmail, FakeMaps({"t1": NEW}), FakeTagger(), FakeGit(), ["--apply", "--push"])
+    gmail = FakeGmail([mail_with_map()])
+    drive(repo, gmail, FakeMaps({URL_A: NEW}), FakeTagger(), FakeGit(), ["--apply", "--push"])
 
     data = json.loads((repo / "docs/data.json").read_text(encoding="utf-8"))
     entry = next((r for r in data if r["name"] == "新しいラーメン店"), None)
@@ -273,12 +294,73 @@ def test_coords_written(tmp: Path) -> None:
     check("既存店の座標は保たれる", existing["lat"] is not None, True)
 
 
+def test_search_fallback(tmp: Path) -> None:
+    print("\n[マップ URL が無いメール → 件名で検索して補完]")
+    repo = make_repo(tmp / "search")
+    n_before = len(rows_of(repo))
+    gmail = FakeGmail([mail_without_map(subject="新しいラーメン店")])
+    maps = FakeMaps(by_query={"新しいラーメン店": NEW})
+    drive(repo, gmail, maps, FakeTagger(), FakeGit(), ["--apply", "--push"])
+
+    check("件名で検索した", maps.searched, ["新しいラーメン店"])
+    check("行が1つ増える", len(rows_of(repo)) - n_before, 1)
+    check("住所が入る（未確認にならない）", rows_of(repo)[-1].address, "北見市北1条西1-1")
+    check("アーカイブされる", gmail.archived, ["t1"])
+
+
+def test_search_ambiguous_stays(tmp: Path) -> None:
+    print("\n[検索で1軒に絞れない]")
+    repo = make_repo(tmp / "ambiguous")
+    n_before = len(rows_of(repo))
+    gmail = FakeGmail([mail_without_map(subject="すすきのの店")])
+    maps = FakeMaps(by_query={})  # 該当なし = 絞れなかった
+    drive(repo, gmail, maps, FakeTagger(), FakeGit(), ["--apply", "--push"])
+
+    check("検索は試みる", maps.searched, ["すすきのの店"])
+    check("行は増えない（推測で足さない）", len(rows_of(repo)), n_before)
+    check("受信箱に残る", gmail.remaining, ["t1"])
+
+
+def test_no_address_stays(tmp: Path) -> None:
+    print("\n[住所が取れなかった] ★セレクタが腐ったときの挙動")
+    repo = make_repo(tmp / "noaddr")
+    n_before = len(rows_of(repo))
+    gmail = FakeGmail([mail_with_map()])
+    drive(repo, gmail, FakeMaps({URL_A: NO_ADDRESS}), FakeTagger(), FakeGit(),
+          ["--apply", "--push"])
+
+    check("住所 未確認 の行を足さない", len(rows_of(repo)), n_before)
+    check("アーカイブしない", gmail.archived, [])
+    check("受信箱に溜まって気づける", gmail.remaining, ["t1"])
+
+
+def test_official_site_feeds_tagger(tmp: Path) -> None:
+    print("\n[公式サイトの本文をタガーに渡す]")
+    repo = make_repo(tmp / "site")
+
+    seen = {}
+
+    class RecordingTagger(FakeTagger):
+        def tag(self, *, name, existing_tags, source_text):
+            seen["source"] = source_text
+            return super().tag(name=name, existing_tags=existing_tags,
+                               source_text=source_text)
+
+    gmail = FakeGmail([mail_with_map()])
+    maps = FakeMaps({URL_A: NEW}, site_text="名物は特製醤油ラーメンです")
+    drive(repo, gmail, maps, RecordingTagger(), FakeGit(), ["--apply", "--push"])
+
+    check("公式サイトを読んだ", maps.fetched, ["https://example.com"])
+    check("本文がタガーの材料に入る", "名物は特製醤油ラーメン" in seen.get("source", ""), True)
+    check("マップの取得内容も材料に入る", "北見市北1条西1-1" in seen.get("source", ""), True)
+
+
 def test_existing_records_untouched(tmp: Path) -> None:
     print("\n[利用者の記録を壊さないか]")
     repo = make_repo(tmp / "records")
     before = {r.name: (r.visits, r.rating) for r in rows_of(repo)}
-    gmail = FakeGmail([FakeMail("t1", "新しいラーメン店", ["https://maps.app.goo.gl/a"])])
-    drive(repo, gmail, FakeMaps({"t1": NEW}), FakeTagger(), FakeGit(), ["--apply", "--push"])
+    gmail = FakeGmail([mail_with_map()])
+    drive(repo, gmail, FakeMaps({URL_A: NEW}), FakeTagger(), FakeGit(), ["--apply", "--push"])
 
     after = {r.name: (r.visits, r.rating) for r in rows_of(repo)}
     changed = {k: (before[k], after[k]) for k in before if before.get(k) != after.get(k)}
@@ -294,6 +376,10 @@ if __name__ == "__main__":
         test_unidentifiable_stays(tmp)
         test_not_confident_stays(tmp)
         test_already_listed(tmp)
+        test_search_fallback(tmp)
+        test_search_ambiguous_stays(tmp)
+        test_no_address_stays(tmp)
+        test_official_site_feeds_tagger(tmp)
         test_push_failure_blocks_archive(tmp)
         test_success_path(tmp)
         test_coords_written(tmp)

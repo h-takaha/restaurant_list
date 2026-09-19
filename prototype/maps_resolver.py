@@ -12,8 +12,9 @@ from __future__ import annotations
 
 import os
 import re
+import unicodedata
 from dataclasses import dataclass, asdict
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from playwright.sync_api import TimeoutError as PWTimeout, sync_playwright
 
@@ -109,27 +110,73 @@ def _read_hours(page) -> list[str] | None:
     return None
 
 
-def resolve(url: str, *, headless: bool = True, timeout_ms: int = 30000) -> Place:
-    # 環境に Playwright 同梱でない Chromium しか無い場合の逃げ道
-    executable = os.environ.get("PLAYWRIGHT_CHROMIUM_PATH") or None
+def search_url(name: str) -> str:
+    """店名から Google マップの検索 URL を組み立てる。
 
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=headless, executable_path=executable)
-        context = browser.new_context(locale="ja-JP", timezone_id="Asia/Tokyo")
-        page = context.new_page()
+    マップの共有 URL が無いメール（SNS のリンクだけ、紙面の店名を打っただけ）でも、
+    同じ place ページに辿り着ければ住所も座標も取れる。検索エンジンを別途
+    スクレイピングするより、検証済みの経路をそのまま使うほうが壊れにくい。
+    """
+    return "https://www.google.com/maps/search/" + quote(name)
+
+
+def _bigrams(text: str) -> set[str]:
+    folded = unicodedata.normalize("NFKC", text).lower()
+    squeezed = "".join(folded.split())
+    return {squeezed[i:i + 2] for i in range(len(squeezed) - 1)} or {squeezed}
+
+
+def name_matches(query: str, found: str, threshold: float = 0.3) -> bool:
+    """検索で出てきた店が、探していた店かどうか。
+
+    件名が「すすきのの店」のような曖昧な文字列だと、マップ検索は無関係な店を
+    返す。名前が似ていなければ別の店とみなす。日本語は空白で単語に割れないので
+    文字バイグラムの重なりで見る。
+    """
+    a, b = _bigrams(query), _bigrams(found)
+    if not a or not b:
+        return False
+    return len(a & b) / min(len(a), len(b)) >= threshold
+
+
+class Session:
+    """ブラウザを使い回す。1通のメールで検索と公式サイトの2回開くことがある。"""
+
+    def __init__(self, *, headless: bool = True, timeout_ms: int = 30000) -> None:
+        self.headless, self.timeout_ms = headless, timeout_ms
+
+    def __enter__(self) -> "Session":
+        # 環境に Playwright 同梱でない Chromium しか無い場合の逃げ道
+        executable = os.environ.get("PLAYWRIGHT_CHROMIUM_PATH") or None
+        self._pw = sync_playwright().start()
+        self._browser = self._pw.chromium.launch(headless=self.headless,
+                                                 executable_path=executable)
+        self._context = self._browser.new_context(locale="ja-JP", timezone_id="Asia/Tokyo")
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self._context.close()
+        self._browser.close()
+        self._pw.stop()
+
+    def _open(self, url: str):
+        page = self._context.new_page()
+        page.goto(url, wait_until="domcontentloaded", timeout=self.timeout_ms)
+        _dismiss_consent(page)
+        return page
+
+    def place(self, url: str) -> Place:
+        page = self._open(url)
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-            _dismiss_consent(page)
             try:
-                page.wait_for_selector("h1", timeout=timeout_ms)
+                page.wait_for_selector("h1", timeout=self.timeout_ms)
             except PWTimeout:
                 pass
             page.wait_for_timeout(1500)  # 情報パネルの遅延描画ぶん
 
             final_url = page.url
             lat, lng = _coords(final_url)
-
-            place = Place(
+            return Place(
                 name=_first_attr(page, ["h1"], "text"),
                 address=_strip_label(
                     _first_attr(page, ['button[data-item-id="address"]',
@@ -146,10 +193,41 @@ def resolve(url: str, *, headless: bool = True, timeout_ms: int = 30000) -> Plac
                 lng=lng,
                 resolved_url=final_url,
             )
-            return place
         finally:
-            context.close()
-            browser.close()
+            page.close()
+
+    def search(self, name: str) -> Place | None:
+        """店名で検索する。1軒に決まらなければ None。
+
+        候補が複数あると URL は /search/ のまま留まる。どれか選ぶのは推測に
+        なるので選ばない。呼び出し側は受信箱に残す。
+        """
+        place = self.place(search_url(name))
+        if not place.resolved_url or "/place/" not in place.resolved_url:
+            return None
+        if not place.name or not name_matches(name, place.name):
+            return None
+        return place
+
+    def text(self, url: str, max_chars: int = 4000) -> str | None:
+        """公式サイトの描画後テキスト。タガーに渡す材料にする。"""
+        try:
+            page = self._open(url)
+        except Exception:
+            return None
+        try:
+            page.wait_for_timeout(1000)
+            body = page.query_selector("body")
+            return (body.inner_text()[:max_chars].strip() or None) if body else None
+        except Exception:
+            return None
+        finally:
+            page.close()
+
+
+def resolve(url: str, *, headless: bool = True, timeout_ms: int = 30000) -> Place:
+    with Session(headless=headless, timeout_ms=timeout_ms) as session:
+        return session.place(url)
 
 
 if __name__ == "__main__":

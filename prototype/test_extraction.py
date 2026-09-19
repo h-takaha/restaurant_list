@@ -158,6 +158,26 @@ def test_md_roundtrip(tmp: Path) -> None:
     check("評価は -", reparsed[-1].rating, "-")
 
 
+def test_name_matching() -> None:
+    """検索で出てきた店が探していた店か。緩いと無関係な店の住所を書いてしまう。"""
+    print("\n[店名の同一性判定]")
+    m = maps_resolver.name_matches
+    check("完全一致", m("鳥若 北見総本店", "鳥若 北見総本店"), True)
+    check("件名が短い（鳥若 → 鳥若 北見総本店）", m("鳥若 北見総本店", "鳥若"), True)
+    check("表記ゆれを吸収（全角半角・空白）", m("ラーメン山岡家　北見店", "ラーメン山岡家 北見店"), True)
+    check("別の店は弾く", m("すすきのの店", "とんかつ太郎"), False)
+    check("無関係な店は弾く", m("鳥若 北見総本店", "サイゼリヤ 函館グランディールイチイ店"), False)
+    check("空文字は弾く", m("", "鳥若"), False)
+
+
+def test_search_url() -> None:
+    print("\n[検索 URL の組み立て]")
+    url = maps_resolver.search_url("そばのかね久 総本店")
+    check("maps の検索 URL になる", url.startswith("https://www.google.com/maps/search/"), True)
+    check("日本語がエスケープされる", " " not in url and "久" not in url, True)
+    check("maps URL として判定される", maps_resolver.is_maps_url(url), True)
+
+
 def test_oauth_scope() -> None:
     """scope が広がっていないか。ここが緩むと削除・送信が可能になる。"""
     print("\n[OAuth の権限]")
@@ -222,6 +242,8 @@ if __name__ == "__main__":
         tmp = Path(d)
         test_gmail_parsing()
         test_html_only_mail()
+        test_name_matching()
+        test_search_url()
         test_oauth_scope()
         test_token_refresh(tmp)
         test_coords()
