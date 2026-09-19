@@ -141,28 +141,37 @@ def _expand_hours(page) -> None:
         return
 
 
-def _hours_from_table(page) -> list[str] | None:
+def _hours_from_table(page, say=None) -> list[str] | None:
     """展開後の表を読む。class 名ではなく「1列目が曜日か」で表を見分ける。"""
-    for table in page.query_selector_all("table"):
+    say = say or (lambda *_: None)
+    tables = page.query_selector_all("table")
+    say(f"table 要素: {len(tables)} 個")
+    for i, table in enumerate(tables):
         lines = []
-        for row in table.query_selector_all("tr"):
+        rows = table.query_selector_all("tr")
+        for row in rows:
             cells = [c.inner_text().strip() for c in row.query_selector_all("td, th")]
             cells = [c for c in cells if c]
             if len(cells) >= 2 and _DAY_RE.match(cells[0]):
                 lines.append(f"{cells[0]} {cells[1]}")
+        say(f"  table[{i}]: {len(rows)} 行中 {len(lines)} 行が曜日で始まる"
+            + (f" 例={cells[:2]}" if rows and not lines and cells else ""))
         if len(lines) >= 3:
             return lines
     return None
 
 
-def _hours_from_labels(page) -> list[str] | None:
+def _hours_from_labels(page, say=None) -> list[str] | None:
     """表が無い場合、各曜日のコピー用ボタンの aria-label から拾う。
 
     「土曜日、11時00分～14時00分、16時30分～19時00分、営業時間をコピーします」
     の形。読み上げ用の「11時00分」は、表の表記に合わせて 11:00 に直す。
     """
+    say = say or (lambda *_: None)
     lines = []
-    for el in page.query_selector_all('[aria-label*="営業時間をコピー"]'):
+    buttons = page.query_selector_all('[aria-label*="営業時間をコピー"]')
+    say(f"コピー用ボタン: {len(buttons)} 個")
+    for el in buttons:
         m = _COPY_LABEL_RE.match((el.get_attribute("aria-label") or "").strip())
         if m:
             times = _JP_TIME_RE.sub(lambda t: f"{int(t.group(1))}:{t.group(2)}", m.group(2))
@@ -213,7 +222,7 @@ def _tidy_hours(lines: list[str]) -> list[str] | None:
     return cleaned or None
 
 
-def _read_hours(page) -> list[str] | None:
+def _read_hours(page, say=None) -> list[str] | None:
     """曜日ごとの行をそのまま写す。要約や省略はしない。
 
     営業時間の節は店名や住所より遅れて描画される。同じ URL でも取れたり
@@ -221,15 +230,19 @@ def _read_hours(page) -> list[str] | None:
     """
     # 待つ対象は曜日ごとのコピー用ボタン。節の見出し <span aria-label="営業時間"> は
     # 最初から在るので、それを待つと素通りしてしまう（実際それで取りこぼしていた）。
+    say = say or (lambda *_: None)
     try:
-        page.wait_for_selector('[aria-label*="営業時間をコピー"]', timeout=6000)
+        page.wait_for_selector('[aria-label*="営業時間をコピー"]', timeout=8000)
+        say("コピー用ボタンが現れた")
     except PWTimeout:
-        pass
+        say("コピー用ボタンは8秒待っても現れなかった")
 
-    hours = _hours_from_table(page)
+    hours = _hours_from_table(page, say)
     if not hours:
+        say("展開を試みる")
         _expand_hours(page)
-        hours = _hours_from_table(page) or _hours_from_labels(page)
+        hours = _hours_from_table(page, say) or _hours_from_labels(page, say)
+    say(f"結果: {len(hours) if hours else 0} 行")
     return _tidy_hours(hours) if hours else None
 
 
@@ -291,7 +304,7 @@ class Session:
         _dismiss_consent(page)
         return page
 
-    def place(self, url: str) -> Place:
+    def place(self, url: str, say=None) -> Place:
         page = self._open(url)
         try:
             try:
@@ -314,7 +327,7 @@ class Session:
                     _first_attr(page, ['button[data-item-id^="phone:tel:"]',
                                        '[data-item-id^="phone:tel:"]'], "aria-label")
                 ),
-                hours=_read_hours(page),
+                hours=_read_hours(page, say),
                 lat=lat,
                 lng=lng,
                 resolved_url=final_url,
@@ -356,9 +369,9 @@ class Session:
             page.close()
 
 
-def resolve(url: str, *, headless: bool = True, timeout_ms: int = 30000) -> Place:
+def resolve(url: str, *, headless: bool = True, timeout_ms: int = 30000, say=None) -> Place:
     with Session(headless=headless, timeout_ms=timeout_ms) as session:
-        return session.place(url)
+        return session.place(url, say)
 
 
 def _verdict(place: Place) -> int:
@@ -442,12 +455,18 @@ if __name__ == "__main__":
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if not args:
         raise SystemExit(
-            "usage: python maps_resolver.py <google-maps-url> [--debug] [--headful]"
+            "usage: python maps_resolver.py <google-maps-url> [--trace] [--debug] [--headful]"
         )
 
     if "--debug" in sys.argv:
         _debug_dump(args[0])
         raise SystemExit(0)
 
-    place = resolve(args[0], headless="--headful" not in sys.argv)
+    # --trace は本番と同じ経路を走らせたまま、営業時間の読み取り過程を出す。
+    # --debug は別コードで 3000ms 固定待ちをするので、条件が本番と揃わない。
+    say = (lambda m: print(f"  [trace] {m}")) if "--trace" in sys.argv else None
+    if say:
+        print("\n--- 営業時間の読み取り過程 ---")
+
+    place = resolve(args[0], headless="--headful" not in sys.argv, say=say)
     raise SystemExit(_verdict(place))
