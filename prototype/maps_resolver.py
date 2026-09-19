@@ -10,6 +10,7 @@ None は「未確認」として扱い、推測で埋めない。
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, asdict
 from urllib.parse import urlparse
@@ -109,8 +110,11 @@ def _read_hours(page) -> list[str] | None:
 
 
 def resolve(url: str, *, headless: bool = True, timeout_ms: int = 30000) -> Place:
+    # 環境に Playwright 同梱でない Chromium しか無い場合の逃げ道
+    executable = os.environ.get("PLAYWRIGHT_CHROMIUM_PATH") or None
+
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=headless)
+        browser = pw.chromium.launch(headless=headless, executable_path=executable)
         context = browser.new_context(locale="ja-JP", timezone_id="Asia/Tokyo")
         page = context.new_page()
         try:

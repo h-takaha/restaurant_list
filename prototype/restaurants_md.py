@@ -7,11 +7,14 @@
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
 COLUMNS = ["店名", "タグ", "エリア", "住所", "HP", "オススメメニュー", "来店回数", "評価", "メモ"]
+
+_CELL_SPLIT_RE = re.compile(r"(?<!\\)\|")
 
 
 @dataclass
@@ -57,7 +60,17 @@ def _is_table_line(line: str) -> bool:
 
 
 def _split_cells(line: str) -> list[str]:
-    return [c.strip() for c in line.strip().strip("|").split("|")]
+    """エスケープされていない | だけで区切る。
+
+    素朴に split("|") すると、店名に含まれる `\\|` でセルが1つ増え、
+    以降の列が全てずれる。来店回数の位置にメモが入るような壊れ方をするので、
+    render() のエスケープと対称に扱う必要がある。
+    """
+    body = line.strip()
+    parts = _CELL_SPLIT_RE.split(body)
+    if len(parts) >= 2:
+        parts = parts[1:-1]  # 行頭と行末の | が生む空要素
+    return [p.strip().replace("\\|", "|") for p in parts]
 
 
 def read_rows(path: str | Path) -> list[Row]:
