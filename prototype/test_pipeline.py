@@ -108,13 +108,15 @@ class FakeTagger:
 
 
 class FakeGit:
-    """push の成否を指定できる git。呼ばれたコマンドを記録する。"""
+    """push の成否と現在のブランチを指定できる git。呼ばれたコマンドを記録する。"""
 
-    def __init__(self, push_ok: bool = True) -> None:
-        self.push_ok, self.calls = push_ok, []
+    def __init__(self, push_ok: bool = True, branch: str = "main") -> None:
+        self.push_ok, self.branch, self.calls = push_ok, branch, []
 
     def __call__(self, *args):
         self.calls.append(args)
+        if args[0] == "rev-parse":
+            return subprocess.CompletedProcess(args, 0, stdout=f"{self.branch}\n", stderr="")
         rc = 0
         if args[0] == "push" and not self.push_ok:
             rc = 1
@@ -234,6 +236,30 @@ def test_already_listed(tmp: Path) -> None:
     drive(repo, gmail, FakeMaps({URL_A: KNOWN}), FakeTagger(), FakeGit(), ["--apply", "--push"])
     check("行を足さない", len(rows_of(repo)), n_before)
     check("メールはアーカイブする", gmail.archived, ["t1"])
+
+
+def test_wrong_branch_refuses(tmp: Path) -> None:
+    """main 以外で --push を使わせない。★静かにメールを失う経路
+
+    git commit は現在のブランチに乗るが、git push origin main はローカルの main を
+    押す。別ブランチにいると commit はそこに残り、push は素通りで返り値0になる。
+    「成功した」と誤認してアーカイブすると、変更は main に届かないのに元メールだけ
+    消える。
+    """
+    print("\n[main 以外のブランチで --push] ★静かに失う経路")
+    repo = make_repo(tmp / "branch")
+    n_before = len(rows_of(repo))
+    gmail = FakeGmail([mail_with_map()])
+    git = FakeGit(branch="prototype/local-ingest")
+    code = drive(repo, gmail, FakeMaps({URL_A: NEW}), FakeTagger(), git,
+                 ["--apply", "--push"])
+
+    check("非ゼロで終了", code, 1)
+    check("commit しない", [c for c in git.calls if c[0] == "commit"], [])
+    check("push しない", [c for c in git.calls if c[0] == "push"], [])
+    check("1件もアーカイブしない", gmail.archived, [])
+    check("メールは受信箱に残る", gmail.remaining, ["t1"])
+    check("restaurants.md にも書かない", len(rows_of(repo)), n_before)
 
 
 def test_push_failure_blocks_archive(tmp: Path) -> None:
@@ -409,6 +435,7 @@ if __name__ == "__main__":
         test_official_site_feeds_tagger(tmp)
         test_tag_policy_violation_stays(tmp)
         test_tag_variant_normalised(tmp)
+        test_wrong_branch_refuses(tmp)
         test_push_failure_blocks_archive(tmp)
         test_success_path(tmp)
         test_coords_written(tmp)

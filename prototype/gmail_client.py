@@ -8,6 +8,7 @@ scope は gmail.modify のみ。これは読み取りとラベルの付け外し
 from __future__ import annotations
 
 import base64
+import os
 import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
@@ -91,7 +92,10 @@ def build_service(credentials_path: str | Path, token_path: str | Path):
 
     token_path.parent.mkdir(parents=True, exist_ok=True)
     token_path.write_text(creds.to_json(), encoding="utf-8")
-    token_path.chmod(0o600)
+    if os.name != "nt":
+        # Windows の chmod は読み取り専用フラグしか動かさない。権限は ACL 側の話で、
+        # ユーザのプロファイル配下は既定で本人のみなので、ここでは何もしない。
+        token_path.chmod(0o600)
 
     return build("gmail", "v1", credentials=creds, cache_discovery=False)
 

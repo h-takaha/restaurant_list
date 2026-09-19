@@ -79,12 +79,14 @@ def check_credentials() -> None:
            f"JSON を {creds} に置く（README の手順1）")
 
     token = HOME / "token.json"
-    if token.exists():
-        mode = oct(token.stat().st_mode)[-3:]
-        report(mode == "600", "token.json のパーミッション", mode,
-               f"chmod 600 {token}")
+    if not token.exists():
+        print("  --  token.json: まだ無い（初回の run.py で作られる）")
+    elif os.name == "nt":
+        # Windows の権限は ACL 側。chmod のビットを見ても意味が無い
+        print(f"  --  token.json: あり（{token}）")
     else:
-        print(f"  --  token.json: まだ無い（初回の run.py で作られる）")
+        mode = oct(token.stat().st_mode)[-3:]
+        report(mode == "600", "token.json のパーミッション", mode, f"chmod 600 {token}")
 
 
 def check_tagger() -> None:

@@ -104,6 +104,16 @@ def main() -> int:
     parser.add_argument("--token", default=str(Path.home() / ".restaurant_list/token.json"))
     args = parser.parse_args()
 
+    # --push は main へ押す。別のブランチにいると commit はそのブランチに乗る一方で
+    # push は素通り（返り値0）になり、「成功した」と誤認してメールをアーカイブして
+    # しまう。変更は main に届かないのに元メールだけ消えるので、先に止める。
+    if args.push:
+        branch = git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+        if branch != "main":
+            log(f"main ではなく {branch} にいる。--push は main でだけ使える。")
+            log("  git checkout main してから実行してください。")
+            return 1
+
     md_path = REPO / "restaurants.md"
     rows = restaurants_md.read_rows(md_path)
     tags = restaurants_md.existing_tags(rows)
