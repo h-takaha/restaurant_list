@@ -123,20 +123,65 @@ def test_hours_tidying_real_data() -> None:
         "木曜日 11時00分～14時00分",
         "金曜日 11時00分～14時00分16時30分～19時00分",
     ]
-    check("月曜から並べ、時刻を整え、祝日の注記を落とす",
+    check("月曜から並べ、時刻を整え、祝日名は落として印だけ残す",
           maps_resolver._tidy_hours(raw),
-          ["月曜日 定休日",
+          ["月曜日 定休日（祝日）",
            "火曜日 11:00～14:00",
-           "水曜日 11:00～14:00",
+           "水曜日 11:00～14:00（祝日）",
            "木曜日 11:00～14:00",
            "金曜日 11:00～14:00、16:30～19:00",
            "土曜日 11:00～14:00、16:30～19:00",
            "日曜日 11:00～14:00、16:30～19:00"])
 
+    # 別の店（そばのかね久）。こちらは「祝休日の営業時間」の形で付いてきた。
+    # その時刻は通常の週間営業時間ではないので、消すと嘘の記録になる
+    check("「祝休日の営業時間」も印として残す",
+          maps_resolver._tidy_hours([
+              "月曜日 9時00分～15時00分、17時00分～19時30分 祝休日の営業時間",
+              "火曜日 10時30分～19時30分",
+              "木曜日 定休日"]),
+          ["月曜日 9:00～15:00、17:00～19:30（祝日）",
+           "火曜日 10:30～19:30",
+           "木曜日 定休日"])
+
     # 曜日の直後の括弧だけを落とす。時刻側の補足は残す
     check("L.O. の括弧は消さない",
           maps_resolver._tidy_hours(["金曜日 11:00～14:00 (L.O.13:30)"]),
           ["金曜日 11:00～14:00 (L.O.13:30)"])
+
+
+def test_search_accepts_search_url() -> None:
+    """検索が1軒に決まったかを URL で判定しない。
+
+    実物で確かめたところ、「そばのかね久 総本店」は1軒に決まったのに URL は
+    /search/ のまま留まった。URL を条件にすると、店名も住所も営業時間も全部
+    取れているのに取りこぼす。
+    """
+    print("\n[検索の絞り込み判定]")
+
+    class StubSession(maps_resolver.Session):
+        def __init__(self, result):
+            self.result = result
+
+        def place(self, url):
+            return self.result
+
+    single = maps_resolver.Place(
+        name="かね久総本店", address="網走郡美幌町新町2丁目9",
+        resolved_url="https://www.google.com/maps/search/%E3%81%9D%E3%81%B0...")
+    check("URL が /search/ のままでも、名前と住所が揃えば採る",
+          StubSession(single).search("そばのかね久 総本店") is not None, True)
+
+    # 候補が並んでいる一覧には詳細パネルが無いので住所が取れない
+    listing = maps_resolver.Place(name="そば 検索結果", address=None,
+                                  resolved_url="https://www.google.com/maps/search/x")
+    check("住所が無ければ一覧とみなして採らない",
+          StubSession(listing).search("そば"), None)
+
+    other = maps_resolver.Place(name="鳥貴族 麻生店", address="札幌市北区麻生町2-3-7",
+                                resolved_url="https://www.google.com/maps/place/x")
+    check("別の店が出てきたら採らない",
+          StubSession(other).search("鳥貴族 琴似店"), None)
 
 
 def test_hours_today_only(tmp: Path) -> None:
@@ -468,6 +513,7 @@ if __name__ == "__main__":
         test_hours_from_aria_labels(tmp)
         test_hours_tidying_real_data()
         test_hours_today_only(tmp)
+        test_search_accepts_search_url()
         test_missing_fields(tmp)
 
     print(f"\n{'=' * 50}\nPASS {len(PASS)} / FAIL {len(FAIL)}")

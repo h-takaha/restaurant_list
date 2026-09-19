@@ -168,7 +168,9 @@ def _hours_from_labels(page) -> list[str] | None:
 
 
 _DAY_ANNOT_RE = re.compile(r"^([月火水木金土日]曜日)[（(][^）)]{0,12}[）)]")
-_CAVEAT_RE = re.compile(r"\s*(時間変更の可能性|営業時間が異なる可能性があります)\s*")
+# その日の時刻が「通常の週間営業時間ではない」ことを示す印。消さずに畳む
+_HOLIDAY_RE = re.compile(r"\s*(祝休日の営業時間|祝日の営業時間|時間変更の可能性|"
+                         r"営業時間が異なる可能性があります)\s*")
 _RANGE_JOIN_RE = re.compile(r"(?<=:\d{2})(?=\d{1,2}:\d{2})")
 _DAY_ORDER = "月火水木金土日"
 
@@ -179,11 +181,15 @@ def _tidy_hours(lines: list[str]) -> list[str] | None:
     実物から取れるのは例えば
         土曜日 11時00分～14時00分16時30分～19時00分
         月曜日(敬老の日) 定休日 時間変更の可能性
-    で、そのままでは3つ困る。
+        月曜日 9時00分～15時00分、17時00分～19時30分 祝休日の営業時間
+    で、そのままでは4つ困る。
 
     - 時間帯が区切り無しで繋がっていて読めない
-    - 祝日の注記が入る。「月曜日(敬老の日)」は今年しか成り立たないので、
+    - 祝日名が入る。「月曜日(敬老の日)」は今年しか成り立たないので、
       恒久的な一覧に書くと翌年から嘘になる
+    - 一方で「祝休日の営業時間」は、**その時刻が通常の週間営業時間ではない**
+      という意味。消して普通の月曜の営業時間として記録すると誤りになるので、
+      祝日名は落としつつ「（祝日）」として残し、人が見直せるようにする
     - 今日を起点に並ぶので、実行日によって順番が変わる
 
     曜日と時刻そのものは省略せずに残す。
@@ -191,12 +197,13 @@ def _tidy_hours(lines: list[str]) -> list[str] | None:
     cleaned = []
     for line in lines:
         line = _JP_TIME_RE.sub(lambda t: f"{int(t.group(1))}:{t.group(2)}", line)
+        atypical = bool(_HOLIDAY_RE.search(line)) or bool(_DAY_ANNOT_RE.search(line))
         line = _DAY_ANNOT_RE.sub(r"\1", line)
-        line = _CAVEAT_RE.sub(" ", line)
+        line = _HOLIDAY_RE.sub(" ", line)
         line = _RANGE_JOIN_RE.sub("、", line)
         line = re.sub(r"\s{2,}", " ", line).strip()
         if line:
-            cleaned.append(line)
+            cleaned.append(f"{line}（祝日）" if atypical else line)
 
     cleaned.sort(key=lambda l: _DAY_ORDER.find(l[0]) if l[:1] in _DAY_ORDER else 99)
     return cleaned or None
@@ -303,13 +310,18 @@ class Session:
     def search(self, name: str) -> Place | None:
         """店名で検索する。1軒に決まらなければ None。
 
-        候補が複数あると URL は /search/ のまま留まる。どれか選ぶのは推測に
-        なるので選ばない。呼び出し側は受信箱に残す。
+        1軒に決まったかは URL ではなく、店の詳細パネルが開いたかで見る。
+        実物で確かめたところ、1軒に絞れても URL は /search/ のまま留まることが
+        あった（「そばのかね久 総本店」で確認）。URL を条件にすると、全部取れて
+        いるのに取りこぼす。
+
+        住所（data-item-id="address"）は詳細パネルの要素で、候補が並んでいる
+        一覧の状態では存在しない。名前と住所が揃っていれば1軒に決まっている。
         """
         place = self.place(search_url(name))
-        if not place.resolved_url or "/place/" not in place.resolved_url:
+        if not place.name or not place.address:
             return None
-        if not place.name or not name_matches(name, place.name):
+        if not name_matches(name, place.name):
             return None
         return place
 
@@ -339,7 +351,9 @@ def _verdict(place: Place) -> int:
     rows = [
         ("店名", place.name, True),
         ("住所", place.address, True),
-        ("座標", f"{place.lat}, {place.lng}" if place.lat else None, True),
+        # 座標は共有 URL なら付いてくるが、検索経由だと URL に入らない。
+        # 無くても build.mjs が住所からジオコーダで引くので必須ではない
+        ("座標", f"{place.lat}, {place.lng}" if place.lat else None, False),
         ("公式サイト", place.website, False),
         ("電話", place.phone, False),
         ("営業時間", "／".join(place.hours) if place.hours else None, False),
@@ -355,7 +369,10 @@ def _verdict(place: Place) -> int:
         print(f"セレクタが実物に当たっていない: {'、'.join(missing)}")
         print("--debug を付けて実行し、出力をそのまま渡してもらえれば直せます。")
         return 1
-    print("必須項目（店名・住所・座標）は取れています。セレクタは生きています。")
+    print("必須項目（店名・住所）は取れています。セレクタは生きています。")
+    if not place.lat:
+        print("座標はこの経路では取れません（検索だと URL に入らない）。"
+              "build.mjs が住所から引くので問題ありません。")
     if not place.hours:
         print("営業時間だけ取れていません。メモが薄くなるだけで、取り込みは動きます。")
     return 0
