@@ -158,6 +158,52 @@ def test_md_roundtrip(tmp: Path) -> None:
     check("評価は -", reparsed[-1].rating, "-")
 
 
+def test_oauth_scope() -> None:
+    """scope が広がっていないか。ここが緩むと削除・送信が可能になる。"""
+    print("\n[OAuth の権限]")
+    check("scope は gmail.modify のみ", gmail_client.SCOPES,
+          ["https://www.googleapis.com/auth/gmail.modify"])
+    check("削除・送信を含む全権 scope は使わない",
+          any("mail.google.com" in s for s in gmail_client.SCOPES), False)
+
+
+def test_token_refresh(tmp: Path) -> None:
+    """毎朝走るのはこの経路。ブラウザを開かずに更新できるか。"""
+    print("\n[トークンの自動更新（無人実行の経路）]")
+
+    class FakeCreds:
+        def __init__(self) -> None:
+            self.expired, self.refresh_token, self.valid = True, "rt", True
+            self.refreshed = False
+
+        def refresh(self, request): self.refreshed = True
+        def to_json(self): return '{"token": "refreshed"}'
+
+    creds = FakeCreds()
+    token = tmp / "nested" / "token.json"
+    token.parent.mkdir(parents=True, exist_ok=True)
+    token.write_text('{"token": "old"}', encoding="utf-8")
+
+    orig = (gmail_client.Credentials, gmail_client.build, gmail_client.InstalledAppFlow)
+    opened_browser = []
+    gmail_client.Credentials = type("C", (), {
+        "from_authorized_user_file": staticmethod(lambda p, s: creds)})
+    gmail_client.build = lambda *a, **kw: "service"
+    gmail_client.InstalledAppFlow = type("F", (), {
+        "from_client_secrets_file": staticmethod(
+            lambda *a: opened_browser.append(1) or (_ for _ in ()).throw(AssertionError))})
+    try:
+        service = gmail_client.build_service("creds.json", token)
+    finally:
+        gmail_client.Credentials, gmail_client.build, gmail_client.InstalledAppFlow = orig
+
+    check("期限切れなら refresh する", creds.refreshed, True)
+    check("ブラウザを開かない", opened_browser, [])
+    check("更新後のトークンを保存する", token.read_text(encoding="utf-8"), '{"token": "refreshed"}')
+    check("パーミッションは 600", oct(token.stat().st_mode)[-3:], "600")
+    check("service を返す", service, "service")
+
+
 def test_coords() -> None:
     print("\n[座標パース]")
     check("!3d!4d（実際の地点）を @（視点中心）より優先",
@@ -176,6 +222,8 @@ if __name__ == "__main__":
         tmp = Path(d)
         test_gmail_parsing()
         test_html_only_mail()
+        test_oauth_scope()
+        test_token_refresh(tmp)
         test_coords()
         test_md_roundtrip(tmp)
         test_maps_dom(tmp)
