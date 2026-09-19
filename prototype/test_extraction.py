@@ -421,6 +421,60 @@ def test_tag_policy() -> None:
     check("タグ無しは拒否", problem is not None, True)
 
 
+def test_area_not_a_tag() -> None:
+    """地名がタグに混入しないか。実際に Ollama が「美幌」を入れてきた。
+
+    エリア列が既に持っているので、タグにすると地図に使い道のない絞り込み
+    ボタンが増える。タグは AND 検索なので選んでも意味がない。
+    """
+    print("\n[地名をタグにしない]")
+    import tagger
+
+    src = Path(__file__).resolve().parent.parent / "restaurants.md"
+    rows = restaurants_md.read_rows(src)
+    tags = restaurants_md.existing_tags(rows)
+    areas = restaurants_md.existing_areas(rows)
+
+    check("エリア一覧を拾える", "美幌" in areas and "北見" in areas, True)
+
+    # 2026-09-19 の dry-run で Ollama が実際に返した値
+    accepted, new, problem = tagger.enforce_tag_policy(["ラーメン", "美幌"], tags, areas)
+    check("「美幌」は落ちる", "美幌" not in accepted, True)
+    check("新しいタグ扱いにもしない", new, [])
+    check("ラーメンは残る", "ラーメン" in accepted, True)
+    check("行は追加される（受信箱に残さない）", problem, None)
+
+    for area in ["北見", "札幌すすきの", "端野", "旭川"]:
+        accepted, _, _ = tagger.enforce_tag_policy(["麺", "ラーメン", area], tags, areas)
+        check(f"{area} も落ちる", area not in accepted, True)
+
+
+def test_implied_tags() -> None:
+    """既存データから慣習を読み取れるか。
+
+    58行ではラーメンに必ず麺が、寿司に必ず海鮮が付いている。地図の絞り込みは
+    AND なので、麺の無いラーメン店は「麺」で絞ると出てこない。
+    """
+    print("\n[既存の慣習からタグを補う]")
+    import tagger
+
+    src = Path(__file__).resolve().parent.parent / "restaurants.md"
+    rows = restaurants_md.read_rows(src)
+    implied = restaurants_md.implied_tags(rows)
+
+    check("ラーメン → 麺", implied.get("ラーメン"), ["麺"])
+    check("寿司 → 海鮮", implied.get("寿司"), ["海鮮"])
+    check("焼き鳥 → 居酒屋", implied.get("焼き鳥"), ["居酒屋"])
+    # 逆向きには効かない。麺はラーメン以外にも付くので何も含意しない
+    check("麺 → 何も含意しない", implied.get("麺"), [])
+    check("海鮮 → 何も含意しない", implied.get("海鮮"), [])
+
+    tags = restaurants_md.existing_tags(rows)
+    areas = restaurants_md.existing_areas(rows)
+    accepted, _, _ = tagger.enforce_tag_policy(["ラーメン", "美幌"], tags, areas, implied)
+    check("地名を落としたうえで麺を補う", sorted(accepted), ["ラーメン", "麺"])
+
+
 def test_broken_llm_output() -> None:
     """壊れた出力で落ちないか。落ちると以降のメールが処理されない。"""
     print("\n[LLM が壊れた出力を返した場合]")
@@ -534,6 +588,8 @@ if __name__ == "__main__":
         test_no_confusion_in_real_list()
         test_new_branch_not_swallowed()
         test_tag_policy()
+        test_area_not_a_tag()
+        test_implied_tags()
         test_broken_llm_output()
         test_tidy_address()
         test_search_url()

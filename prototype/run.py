@@ -117,6 +117,8 @@ def main() -> int:
     md_path = REPO / "restaurants.md"
     rows = restaurants_md.read_rows(md_path)
     tags = restaurants_md.existing_tags(rows)
+    areas = restaurants_md.existing_areas(rows)
+    implied = restaurants_md.implied_tags(rows)
     log(f"既存 {len(rows)} 件 / タグ {len(tags)} 種: {', '.join(tags)}\n")
 
     service = gmail_client.build_service(args.credentials, args.token)
@@ -172,7 +174,7 @@ def main() -> int:
 
             # タグ規則はプロンプトの約束では守られない。コード側で確かめる
             result.tags, result.new_tags, problem = tagger_module.enforce_tag_policy(
-                result.tags, tags)
+                result.tags, tags, areas, implied)
             if problem:
                 log(f"  → タグ規則に反する（{problem}）。受信箱に残す\n")
                 skipped.append(mail.subject)

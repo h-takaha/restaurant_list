@@ -23,7 +23,10 @@ SYSTEM = """あなたは飲食店リストのタグ付けだけを行う。
 - 店名・住所・メニューを推測で作らない。テキストに無ければ空文字を返す。
 - タグは既存タグ一覧から選ぶ。どれにも当てはまらないときだけ、新しいタグを1つだけ増やしてよい。
 - 新しいタグは「〜専門店」「〜料理」のような語尾を付けず、短い名詞にする。
-- 上位のくくりと具体名の両方を付けてよい（例: ラーメン店なら「麺」と「ラーメン」）。
+- **上位のくくりと具体名の両方を必ず付ける。** ラーメン店なら「麺」と「ラーメン」、
+  そば店なら「麺」と「そば」、回転寿司なら「寿司」と「海鮮」。片方だけにしない。
+- **地名をタグにしない。** 「美幌」「北見」「札幌」などはエリアであってタグではない。
+  エリアは area に書く。
 - 表記ゆれで既存タグと重複する新タグを作らない。"""
 
 SCHEMA = {
@@ -43,7 +46,9 @@ SCHEMA = {
 _SUFFIXES = ("専門店", "料理", "屋", "店")
 
 
-def enforce_tag_policy(tags: list[str], existing: list[str]) -> tuple[list[str], list[str], str | None]:
+def enforce_tag_policy(tags: list[str], existing: list[str], areas: list[str] = (),
+                       implied: dict[str, list[str]] = None,
+                       ) -> tuple[list[str], list[str], str | None]:
     """返ってきたタグを既存一覧と突き合わせる。
 
     プロンプトで「既存タグを使い回せ」「新タグは1つまで」と頼んでも、守る保証は
@@ -54,11 +59,19 @@ def enforce_tag_policy(tags: list[str], existing: list[str]) -> tuple[list[str],
     返り値は (採用するタグ, 新しいタグ, 問題があればその説明)。
     """
     lookup = {restaurants_md.normalize(t): t for t in existing}
+    area_keys = {restaurants_md.normalize(a) for a in areas}
+    implied = implied or {}
 
     accepted: list[str] = []
     new: list[str] = []
     for tag in dict.fromkeys(t.strip() for t in tags if t.strip()):
         key = restaurants_md.normalize(tag)
+
+        # 地名はタグにしない。エリア列が既に持っているので、タグにすると
+        # 地図に使い道のない絞り込みボタンが増える（実際 Ollama が「美幌」を
+        # タグに入れてきた）。エリアと重複するだけなので黙って捨てる
+        if key in area_keys:
+            continue
 
         # 全角半角・空白・大小文字だけの違いは既存の表記に寄せる
         if key in lookup:
@@ -77,6 +90,13 @@ def enforce_tag_policy(tags: list[str], existing: list[str]) -> tuple[list[str],
 
         accepted.append(tag)
         new.append(tag)
+
+    # 既存の慣習で必ず一緒に付くタグを補う。ラーメンには麺、寿司には海鮮。
+    # 地図の絞り込みは AND なので、麺の無いラーメン店は「麺」で絞ると出てこない
+    for tag in list(accepted):
+        for partner in implied.get(tag, ()):
+            if partner not in accepted:
+                accepted.append(partner)
 
     if not accepted:
         return accepted, new, "タグが1つも付かなかった"

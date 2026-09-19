@@ -107,6 +107,47 @@ def existing_tags(rows: list[Row]) -> list[str]:
     return sorted(seen)
 
 
+def existing_areas(rows: list[Row]) -> list[str]:
+    """エリア列に出てくる地名。タグへの混入を弾くのに使う。
+
+    「北見・端野」のような複合も個別に割っておく。
+    """
+    seen: dict[str, None] = {}
+    for row in rows:
+        for part in row.area.replace("・", "/").split("/"):
+            if part.strip():
+                seen.setdefault(part.strip(), None)
+    return sorted(seen)
+
+
+def implied_tags(rows: list[Row], min_support: int = 3) -> dict[str, list[str]]:
+    """既存データで「必ず一緒に付いている」タグの対応。
+
+    58行を見ると、ラーメンは必ず麺と、寿司は必ず海鮮と、焼き鳥は必ず居酒屋と
+    一緒に付いている。地図の絞り込みは AND なので、麺の無いラーメン店は
+    「麺」で絞ると出てこない。慣習をデータから読み取って補う。
+
+    逆向きには効かない（麺はラーメン以外にも付くので何も含意しない）。
+    慣習が崩れれば推論も自動で外れる。min_support は、1〜2行だけの偶然から
+    規則を作らないための下限。
+    """
+    counts: dict[str, int] = {}
+    together: dict[str, dict[str, int]] = {}
+    for row in rows:
+        for tag in row.tags:
+            counts[tag] = counts.get(tag, 0) + 1
+            pairs = together.setdefault(tag, {})
+            for other in row.tags:
+                if other != tag:
+                    pairs[other] = pairs.get(other, 0) + 1
+
+    return {
+        tag: sorted(o for o, n in together.get(tag, {}).items() if n == total)
+        for tag, total in counts.items()
+        if total >= min_support
+    }
+
+
 def find(rows: list[Row], name: str) -> Row | None:
     key = normalize(name)
     for row in rows:
