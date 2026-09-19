@@ -68,12 +68,28 @@ scope は `gmail.modify` だけ。読み取りとラベルの付け外しは許�
 4. 「認証情報」→ OAuth クライアント ID → 種類は**デスクトップ アプリ**
 5. JSON をダウンロードして `~/.restaurant_list/credentials.json` に置く
 
+```bash
+mkdir -p ~/.restaurant_list
+mv ~/Downloads/client_secret_*.json ~/.restaurant_list/credentials.json
+chmod 600 ~/.restaurant_list/credentials.json
+```
+
+Windows（PowerShell）。**`chmod` は不要** — 権限は ACL 側で、ユーザのプロファイル配下は
+既定で本人のみ。
+
+```powershell
+New-Item -ItemType Directory -Force -Path ~\.restaurant_list | Out-Null
+Move-Item ~\Downloads\client_secret_*.json ~\.restaurant_list\credentials.json
+```
+
 ### 2. 依存
 
 ```bash
 pip install -r requirements.txt
 playwright install chromium
 ```
+
+配置できたかは `python doctor.py` で確かめる。足りないものと直し方が出る。
 
 `ClaudeTagger` を使うなら `ANTHROPIC_API_KEY` を設定する。`OllamaTagger` なら
 `ollama serve` が動いていればよい。
