@@ -131,10 +131,14 @@ def _expand_hours(page) -> None:
                      '[aria-label="営業時間"]'):
         try:
             page.click(selector, timeout=2000)
-            page.wait_for_timeout(1000)
-            return
         except Exception:
             continue
+        # 展開後の表が描かれるまで待つ。出なくても次のセレクタを試す
+        try:
+            page.wait_for_selector("table", timeout=4000)
+        except PWTimeout:
+            page.wait_for_timeout(1000)
+        return
 
 
 def _hours_from_table(page) -> list[str] | None:
@@ -210,7 +214,17 @@ def _tidy_hours(lines: list[str]) -> list[str] | None:
 
 
 def _read_hours(page) -> list[str] | None:
-    """曜日ごとの行をそのまま写す。要約や省略はしない。"""
+    """曜日ごとの行をそのまま写す。要約や省略はしない。
+
+    営業時間の節は店名や住所より遅れて描画される。同じ URL でも取れたり
+    取れなかったりしたので、節が現れるまで待ってから読む。
+    """
+    try:
+        page.wait_for_selector('[aria-label*="営業時間"], [aria-label*="時間をコピー"]',
+                               timeout=6000)
+    except PWTimeout:
+        pass
+
     hours = _hours_from_table(page)
     if not hours:
         _expand_hours(page)
