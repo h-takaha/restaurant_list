@@ -355,6 +355,33 @@ def test_official_site_feeds_tagger(tmp: Path) -> None:
     check("マップの取得内容も材料に入る", "北見市北1条西1-1" in seen.get("source", ""), True)
 
 
+def test_tag_policy_violation_stays(tmp: Path) -> None:
+    print("\n[タガーが新しいタグを作りすぎた]")
+    repo = make_repo(tmp / "tagpolicy")
+    n_before = len(rows_of(repo))
+    gmail = FakeGmail([mail_with_map()])
+    # 既存に無いタグを3つ返す = 規則違反
+    bad = FakeTagger(tags=("つけ麺", "油そば", "汁なし"))
+    drive(repo, gmail, FakeMaps({URL_A: NEW}), bad, FakeGit(), ["--apply", "--push"])
+
+    check("行は増えない", len(rows_of(repo)), n_before)
+    check("アーカイブしない", gmail.archived, [])
+    check("受信箱に残る", gmail.remaining, ["t1"])
+
+
+def test_tag_variant_normalised(tmp: Path) -> None:
+    print("\n[タガーが表記ゆれのタグを返した]")
+    repo = make_repo(tmp / "tagvariant")
+    gmail = FakeGmail([mail_with_map()])
+    # 「ラーメン屋」は既存の「ラーメン」に寄せられるので、新タグ扱いにならない
+    drive(repo, gmail, FakeMaps({URL_A: NEW}), FakeTagger(tags=("麺", "ラーメン屋")),
+          FakeGit(), ["--apply", "--push"])
+
+    added = rows_of(repo)[-1]
+    check("既存タグに寄せて追記される", added.tags, ["麺", "ラーメン"])
+    check("アーカイブされる", gmail.archived, ["t1"])
+
+
 def test_existing_records_untouched(tmp: Path) -> None:
     print("\n[利用者の記録を壊さないか]")
     repo = make_repo(tmp / "records")
@@ -380,6 +407,8 @@ if __name__ == "__main__":
         test_search_ambiguous_stays(tmp)
         test_no_address_stays(tmp)
         test_official_site_feeds_tagger(tmp)
+        test_tag_policy_violation_stays(tmp)
+        test_tag_variant_normalised(tmp)
         test_push_failure_blocks_archive(tmp)
         test_success_path(tmp)
         test_coords_written(tmp)

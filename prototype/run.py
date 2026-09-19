@@ -17,6 +17,7 @@ from pathlib import Path
 import gmail_client
 import maps_resolver
 import restaurants_md
+import tagger as tagger_module
 from restaurants_md import Row
 
 REPO = Path(__file__).resolve().parent.parent
@@ -156,6 +157,14 @@ def main() -> int:
             result = tagger.tag(name=place.name, existing_tags=tags, source_text=source)
             if not result.confident:
                 log("  → 材料が足りないと判断。受信箱に残す\n")
+                skipped.append(mail.subject)
+                continue
+
+            # タグ規則はプロンプトの約束では守られない。コード側で確かめる
+            result.tags, result.new_tags, problem = tagger_module.enforce_tag_policy(
+                result.tags, tags)
+            if problem:
+                log(f"  → タグ規則に反する（{problem}）。受信箱に残す\n")
                 skipped.append(mail.subject)
                 continue
 

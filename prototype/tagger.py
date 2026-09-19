@@ -14,6 +14,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Protocol
 
+import restaurants_md
+
 SYSTEM = """あなたは飲食店リストのタグ付けだけを行う。
 
 厳守:
@@ -38,6 +40,51 @@ SCHEMA = {
 }
 
 
+_SUFFIXES = ("専門店", "料理", "屋", "店")
+
+
+def enforce_tag_policy(tags: list[str], existing: list[str]) -> tuple[list[str], list[str], str | None]:
+    """返ってきたタグを既存一覧と突き合わせる。
+
+    プロンプトで「既存タグを使い回せ」「新タグは1つまで」と頼んでも、守る保証は
+    無い。守られないと地図の絞り込みボタンが表記ゆれで二重に増え、しかも
+    AND 検索なので「ラーメン」と「ラーメン屋」の両方を選ぶと0件になる。
+    規則はコード側で確かめる。
+
+    返り値は (採用するタグ, 新しいタグ, 問題があればその説明)。
+    """
+    lookup = {restaurants_md.normalize(t): t for t in existing}
+
+    accepted: list[str] = []
+    new: list[str] = []
+    for tag in dict.fromkeys(t.strip() for t in tags if t.strip()):
+        key = restaurants_md.normalize(tag)
+
+        # 全角半角・空白・大小文字だけの違いは既存の表記に寄せる
+        if key in lookup:
+            accepted.append(lookup[key])
+            continue
+
+        # 「〜屋」「〜料理」「〜専門店」を落として既存に当たるなら、それは語尾ゆれ
+        canonical = next(
+            (lookup[stripped] for suffix in _SUFFIXES
+             if (stripped := key[:-len(suffix)]) and key.endswith(suffix) and stripped in lookup),
+            None,
+        )
+        if canonical:
+            accepted.append(canonical)
+            continue
+
+        accepted.append(tag)
+        new.append(tag)
+
+    if not accepted:
+        return accepted, new, "タグが1つも付かなかった"
+    if len(new) > 1:
+        return accepted, new, f"新しいタグを{len(new)}個作ろうとした: {', '.join(new)}"
+    return list(dict.fromkeys(accepted)), new, None
+
+
 @dataclass
 class TagResult:
     tags: list[str]
@@ -48,7 +95,13 @@ class TagResult:
 
     @classmethod
     def from_json(cls, raw: str) -> "TagResult":
-        data = json.loads(raw)
+        # スキーマを渡していても、ローカル LLM は壊れた JSON を返すことがある。
+        # 落とさず「確信なし」にして受信箱に残す。
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            return cls(tags=[], new_tags=[], recommended_menu="未確認",
+                       area="未確認", confident=False)
         return cls(
             tags=data.get("tags", []),
             new_tags=data.get("new_tags", []),

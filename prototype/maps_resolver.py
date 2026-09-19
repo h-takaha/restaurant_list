@@ -12,9 +12,10 @@ from __future__ import annotations
 
 import os
 import re
-import unicodedata
 from dataclasses import dataclass, asdict
 from urllib.parse import quote, urlparse
+
+import restaurants_md
 
 from playwright.sync_api import TimeoutError as PWTimeout, sync_playwright
 
@@ -120,23 +121,26 @@ def search_url(name: str) -> str:
     return "https://www.google.com/maps/search/" + quote(name)
 
 
-def _bigrams(text: str) -> set[str]:
-    folded = unicodedata.normalize("NFKC", text).lower()
-    squeezed = "".join(folded.split())
-    return {squeezed[i:i + 2] for i in range(len(squeezed) - 1)} or {squeezed}
-
-
-def name_matches(query: str, found: str, threshold: float = 0.3) -> bool:
+def name_matches(query: str, found: str) -> bool:
     """検索で出てきた店が、探していた店かどうか。
 
-    件名が「すすきのの店」のような曖昧な文字列だと、マップ検索は無関係な店を
-    返す。名前が似ていなければ別の店とみなす。日本語は空白で単語に割れないので
-    文字バイグラムの重なりで見る。
+    正規化して片方が他方を含むことを求める。件名は正式名そのもの（マップの
+    共有メール）か、その略記（「鳥若」→「鳥若 北見総本店」）のどちらかなので、
+    包含で足りる。
+
+    類似度で測ってはいけない。このリストには鳥貴族8店・サイゼリヤ8店・福よし5店が
+    あり、支店名以外は全部同じ文字列になる。実名58件を総当たりすると、文字
+    バイグラムの重なりでは「サイゼリヤ イオンモール旭川駅前店」と「同 旭川西店」が
+    0.86 で一致してしまう（72組が誤一致）。閾値を上げても解けない。
+    包含なら同じ総当たりで誤一致は0。
+
+    表記ゆれ（「回転寿司」と「回転寿し」）では一致しなくなるが、外した側は
+    受信箱に残るだけなので害がない。別支店の住所を書き込むほうがずっと悪い。
     """
-    a, b = _bigrams(query), _bigrams(found)
-    if not a or not b:
+    q, f = restaurants_md.normalize(query), restaurants_md.normalize(found)
+    if not q or not f:
         return False
-    return len(a & b) / min(len(a), len(b)) >= threshold
+    return q in f or f in q
 
 
 class Session:
