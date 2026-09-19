@@ -230,12 +230,16 @@ def _read_hours(page, say=None) -> list[str] | None:
     """
     # 待つ対象は曜日ごとのコピー用ボタン。節の見出し <span aria-label="営業時間"> は
     # 最初から在るので、それを待つと素通りしてしまう（実際それで取りこぼしていた）。
+    # state="attached" が要る。既定は "visible" で、コピー用ボタンは DOM には
+    # 在るが非表示なので、既定のままだと必ずタイムアウトする。それでも結果的に
+    # 表が描けていたのは、空振りの待ちがスリープとして働いていただけだった。
     say = say or (lambda *_: None)
     try:
-        page.wait_for_selector('[aria-label*="営業時間をコピー"]', timeout=8000)
-        say("コピー用ボタンが現れた")
+        page.wait_for_selector('[aria-label*="営業時間をコピー"]',
+                               state="attached", timeout=8000)
+        say("営業時間が描かれた")
     except PWTimeout:
-        say("コピー用ボタンは8秒待っても現れなかった")
+        say("営業時間は8秒待っても現れなかった")
 
     hours = _hours_from_table(page, say)
     if not hours:

@@ -194,6 +194,29 @@ def test_search_accepts_search_url() -> None:
           StubSession(other).search("鳥貴族 琴似店"), None)
 
 
+def test_hours_hidden_buttons(tmp: Path) -> None:
+    """コピー用ボタンは DOM に在るが非表示。待ちは state="attached" が要る。
+
+    Playwright の wait_for_selector は既定で「可視」を待つので、既定のままだと
+    必ずタイムアウトする。実物ではその空振りの8秒がスリープとして働き、
+    結果的に表が描けていた。偶然に頼らないよう固定する。
+    """
+    print("\n[非表示のコピー用ボタンを待てるか]")
+    page = tmp / "hidden.html"
+    buttons = "".join(
+        f'<button aria-label="{day}、10時30分～19時30分、営業時間をコピーします"'
+        f' style="display:none"></button>'
+        for day in ("月曜日", "火曜日", "水曜日"))
+    rows = "".join(f"<tr><td>{day}</td><td>10:30～19:30</td></tr>"
+                   for day in ("月曜日", "火曜日", "水曜日"))
+    page.write_text(f'<!doctype html><meta charset="utf-8"><h1>店</h1>'
+                    f'{buttons}<table>{rows}</table>', encoding="utf-8")
+
+    place = maps_resolver.resolve(page.as_uri())
+    check("非表示でも待てて、表から読める", place.hours,
+          ["月曜日 10:30～19:30", "火曜日 10:30～19:30", "水曜日 10:30～19:30"])
+
+
 def test_hours_today_only(tmp: Path) -> None:
     """今日1日ぶんしか無いなら書かない。半端な営業時間は誤解を招く。"""
     print("\n[今日ぶんしか取れない場合]")
@@ -522,6 +545,7 @@ if __name__ == "__main__":
         test_hours_collapsed(tmp)
         test_hours_from_aria_labels(tmp)
         test_hours_tidying_real_data()
+        test_hours_hidden_buttons(tmp)
         test_hours_today_only(tmp)
         test_search_accepts_search_url()
         test_missing_fields(tmp)
