@@ -219,9 +219,10 @@ def _read_hours(page) -> list[str] | None:
     営業時間の節は店名や住所より遅れて描画される。同じ URL でも取れたり
     取れなかったりしたので、節が現れるまで待ってから読む。
     """
+    # 待つ対象は曜日ごとのコピー用ボタン。節の見出し <span aria-label="営業時間"> は
+    # 最初から在るので、それを待つと素通りしてしまう（実際それで取りこぼしていた）。
     try:
-        page.wait_for_selector('[aria-label*="営業時間"], [aria-label*="時間をコピー"]',
-                               timeout=6000)
+        page.wait_for_selector('[aria-label*="営業時間をコピー"]', timeout=6000)
     except PWTimeout:
         pass
 
