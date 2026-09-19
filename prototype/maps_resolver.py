@@ -411,9 +411,26 @@ def _debug_dump(url: str) -> None:
                 print(f"  data-item-id={el.get_attribute('data-item-id')!r}  "
                       f"aria-label={(el.get_attribute('aria-label') or '')[:60]!r}")
             print("\n--- aria-label に「時間」を含む要素 ---")
-            for el in page.query_selector_all('[aria-label*="時間"]')[:10]:
+            for el in page.query_selector_all('[aria-label*="時間"]')[:12]:
                 print(f"  <{el.evaluate('e => e.tagName')}> "
-                      f"aria-label={(el.get_attribute('aria-label') or '')[:60]!r}")
+                      f"aria-label={(el.get_attribute('aria-label') or '')[:70]!r}")
+
+            tables = page.query_selector_all("table")
+            print(f"\n--- table 要素: {len(tables)} 個 ---")
+            for i, table in enumerate(tables[:3]):
+                rows = table.query_selector_all("tr")
+                print(f"  [{i}] aria-label={(table.get_attribute('aria-label') or '')[:40]!r} "
+                      f"行数={len(rows)}")
+                for row in rows[:3]:
+                    cells = [c.inner_text().strip()[:30]
+                             for c in row.query_selector_all("td, th")]
+                    print(f"        {cells}")
+
+            print("\n--- 「曜日」を含む要素（表以外の描き方を探す）---")
+            for el in page.query_selector_all('*:has-text("曜日")')[-6:]:
+                tag = el.evaluate("e => e.tagName")
+                text = (el.inner_text() or "").replace("\n", " / ")[:90]
+                print(f"  <{tag}> {text!r}")
         finally:
             browser.close()
 
