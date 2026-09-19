@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import re
+import unicodedata
 from dataclasses import dataclass, asdict
 from urllib.parse import quote, urlparse
 
@@ -70,6 +71,32 @@ def _strip_label(value: str | None) -> str | None:
     if not value:
         return None
     return re.sub(r"^[^:：]{0,12}[:：]\s*", "", value).strip() or None
+
+
+# \u6570\u5B57\u306B\u631F\u307E\u308C\u305F\u3082\u306E\u3060\u3051\u3002\u524D\u5F8C\u3092\u898B\u306A\u3044\u3068\u300C\u30B5\u30F3\u30BF\u30EF\u30FC3\u968E\u300D\u304C\u300C\u30B5\u30F3\u30BF\u30EF-3\u968E\u300D\u306B\u306A\u308B
+_DASH_RE = re.compile(r"(?<=\d)[\u2010-\u2015\u2212\uFF0D\u30FC](?=\d)")
+_POSTAL_RE = re.compile(r"^〒?\s*\d{3}[-−–]?\d{4}\s*")
+_PREFECTURE_RE = re.compile(r"^(北海道|東京都|(?:京都|大阪)府|.{2,3}県)")
+
+
+def tidy_address(value: str | None) -> str | None:
+    """マップの住所を、既存の表の書式に合わせる。
+
+    マップは「〒092-0232 北海道網走郡津別町新町１５−２２」の形で返すが、
+    既存58行は「網走郡美幌町新町2丁目9」— 郵便番号も都道府県も無く、数字は半角。
+    揃えないと一覧で浮く。エリア列が地域を持っているので都道府県は要らない。
+
+    座標はマップから直接もらうので、ここを削ってジオコーダの精度が落ちる心配は無い。
+    """
+    if not value:
+        return None
+    # NFKC は全角数字を半角にするが、マイナス記号（U+2212）やダッシュ類は
+    # 変換しない。既存の表は「2-5-16」の ASCII ハイフンなので寄せる。
+    text = unicodedata.normalize("NFKC", value).strip()
+    text = _DASH_RE.sub("-", text)
+    text = _POSTAL_RE.sub("", text)
+    text = _PREFECTURE_RE.sub("", text)
+    return text.strip() or None
 
 
 def _coords(url: str) -> tuple[float | None, float | None]:
@@ -182,10 +209,10 @@ class Session:
             lat, lng = _coords(final_url)
             return Place(
                 name=_first_attr(page, ["h1"], "text"),
-                address=_strip_label(
+                address=tidy_address(_strip_label(
                     _first_attr(page, ['button[data-item-id="address"]',
                                        '[data-item-id="address"]'], "aria-label")
-                ),
+                )),
                 website=_first_attr(page, ['a[data-item-id="authority"]',
                                            '[data-item-id="authority"]'], "href"),
                 phone=_strip_label(

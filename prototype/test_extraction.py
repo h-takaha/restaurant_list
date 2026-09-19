@@ -267,6 +267,30 @@ def test_broken_llm_output() -> None:
     check("欠けたフィールドは安全側の既定", (r.confident, r.recommended_menu), (False, "未確認"))
 
 
+def test_tidy_address() -> None:
+    """マップの住所を既存58行の書式に寄せる。
+
+    実物のマップは「〒092-0232 北海道網走郡津別町新町１５−２２」を返すが、
+    既存は「網走郡美幌町新町2丁目9」。揃えないと一覧で浮く。
+    """
+    print("\n[住所の書式合わせ]")
+    t = maps_resolver.tidy_address
+    check("郵便番号と都道府県を落とし、数字を半角に",
+          t("〒092-0232 北海道網走郡津別町新町１５−２２"), "網走郡津別町新町15-22")
+    check("ビル名は残す",
+          t("〒090-0065 北海道北見市北5条西2丁目 東宝ビル1F"), "北見市北5条西2丁目 東宝ビル1F")
+    check("既に整っていれば変えない", t("北見市本町2-5-16"), "北見市本町2-5-16")
+    check("札幌市も市から始める",
+          t("〒060-0063 北海道札幌市中央区南3条西2丁目17-2"), "札幌市中央区南3条西2丁目17-2")
+    check("北海道以外の県も落とす", t("〒150-0002 東京都渋谷区渋谷1-1-1"), "渋谷区渋谷1-1-1")
+
+    # 長音符は数字に挟まれたときだけハイフン扱いにする
+    check("数字の間の長音符はハイフンに", t("北見市東三輪4ー12ー20"), "北見市東三輪4-12-20")
+    check("カタカナの長音符は壊さない",
+          t("札幌市中央区 サンタワー3階"), "札幌市中央区 サンタワー3階")
+    check("None はそのまま", t(None), None)
+
+
 def test_search_url() -> None:
     print("\n[検索 URL の組み立て]")
     url = maps_resolver.search_url("そばのかね久 総本店")
@@ -344,6 +368,7 @@ if __name__ == "__main__":
         test_new_branch_not_swallowed()
         test_tag_policy()
         test_broken_llm_output()
+        test_tidy_address()
         test_search_url()
         test_oauth_scope()
         test_token_refresh(tmp)
