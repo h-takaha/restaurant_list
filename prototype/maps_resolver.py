@@ -120,22 +120,59 @@ def _dismiss_consent(page) -> None:
             continue
 
 
-def _read_hours(page) -> list[str] | None:
-    """曜日ごとの行をそのまま写す。要約や省略はしない。"""
-    for selector in ('table[aria-label*="営業時間"] tr', 'table[aria-label*="時間"] tr'):
+_DAY_RE = re.compile(r"^[月火水木金土日](曜日)?[\s　]*$|^[月火水木金土日]曜日")
+_COPY_LABEL_RE = re.compile(r"^([月火水木金土日]曜日)、(.+)、営業時間をコピーします$")
+_JP_TIME_RE = re.compile(r"(\d{1,2})時(\d{2})分")
+
+
+def _expand_hours(page) -> None:
+    """営業時間は折りたたまれていて、開くまで table が DOM に無い。"""
+    for selector in ('[aria-label*="1 週間の営業時間"]', '[aria-label*="週間の営業時間"]',
+                     '[aria-label="営業時間"]'):
         try:
-            rows = page.query_selector_all(selector)
+            page.click(selector, timeout=2000)
+            page.wait_for_timeout(1000)
+            return
         except Exception:
             continue
+
+
+def _hours_from_table(page) -> list[str] | None:
+    """展開後の表を読む。class 名ではなく「1列目が曜日か」で表を見分ける。"""
+    for table in page.query_selector_all("table"):
         lines = []
-        for row in rows:
+        for row in table.query_selector_all("tr"):
             cells = [c.inner_text().strip() for c in row.query_selector_all("td, th")]
             cells = [c for c in cells if c]
-            if len(cells) >= 2:
+            if len(cells) >= 2 and _DAY_RE.match(cells[0]):
                 lines.append(f"{cells[0]} {cells[1]}")
-        if lines:
+        if len(lines) >= 3:
             return lines
     return None
+
+
+def _hours_from_labels(page) -> list[str] | None:
+    """表が無い場合、各曜日のコピー用ボタンの aria-label から拾う。
+
+    「土曜日、11時00分～14時00分、16時30分～19時00分、営業時間をコピーします」
+    の形。読み上げ用の「11時00分」は、表の表記に合わせて 11:00 に直す。
+    """
+    lines = []
+    for el in page.query_selector_all('[aria-label*="営業時間をコピー"]'):
+        m = _COPY_LABEL_RE.match((el.get_attribute("aria-label") or "").strip())
+        if m:
+            times = _JP_TIME_RE.sub(lambda t: f"{int(t.group(1))}:{t.group(2)}", m.group(2))
+            lines.append(f"{m.group(1)} {times}")
+    # 今日1日ぶんしか無いなら書かない。半端な営業時間はかえって誤解を招く
+    return lines if len(lines) >= 3 else None
+
+
+def _read_hours(page) -> list[str] | None:
+    """曜日ごとの行をそのまま写す。要約や省略はしない。"""
+    if (hours := _hours_from_table(page)) :
+        return hours
+    _expand_hours(page)
+    return _hours_from_table(page) or _hours_from_labels(page)
 
 
 def search_url(name: str) -> str:

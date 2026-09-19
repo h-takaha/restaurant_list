@@ -62,6 +62,61 @@ def test_maps_dom(tmp: Path) -> None:
           ["月曜日 17:00～23:30", "火曜日 17:00～23:30", "日曜日 16:00～22:30"])
 
 
+def test_hours_collapsed(tmp: Path) -> None:
+    """実物のマップは営業時間を畳んでいて、開くまで table が DOM に無い。
+
+    2026-09 に実 URL を --debug で見たときの構造を写したもの:
+      <SPAN aria-label='1 週間の営業時間を表示'>   ← トグル
+      table は展開後に現れる
+    """
+    print("\n[営業時間が畳まれているページ]")
+    page = tmp / "collapsed.html"
+    page.write_text("""<!doctype html><meta charset="utf-8">
+<h1>そば・うどん 味登利家</h1>
+<span aria-label="1 週間の営業時間を表示" onclick="
+  document.body.insertAdjacentHTML('beforeend',
+    '<table><tr><td>月曜日</td><td>定休日</td></tr>' +
+    '<tr><td>金曜日</td><td>11:00～14:00, 16:30～19:00</td></tr>' +
+    '<tr><td>土曜日</td><td>11:00～14:00, 16:30～19:00</td></tr></table>')
+">営業時間</span>""", encoding="utf-8")
+
+    place = maps_resolver.resolve(page.as_uri())
+    check("展開して曜日ごとに読める", place.hours,
+          ["月曜日 定休日", "金曜日 11:00～14:00, 16:30～19:00",
+           "土曜日 11:00～14:00, 16:30～19:00"])
+
+
+def test_hours_from_aria_labels(tmp: Path) -> None:
+    """表が無くても、各曜日のコピー用ボタンから拾えるか。"""
+    print("\n[コピー用ボタンの aria-label から拾う]")
+    page = tmp / "labels.html"
+    buttons = "".join(
+        f'<button aria-label="{day}、11時00分～14時00分、16時30分～19時00分、'
+        f'営業時間をコピーします"></button>'
+        for day in ("金曜日", "土曜日", "日曜日"))
+    page.write_text(f'<!doctype html><meta charset="utf-8"><h1>店</h1>{buttons}',
+                    encoding="utf-8")
+
+    place = maps_resolver.resolve(page.as_uri())
+    # 時間帯の区切り「、」はマップの表記のまま残す（既存のメモも「、」を使っている）
+    check("読み上げ用の「11時00分」を 11:00 に直す", place.hours,
+          ["金曜日 11:00～14:00、16:30～19:00",
+           "土曜日 11:00～14:00、16:30～19:00",
+           "日曜日 11:00～14:00、16:30～19:00"])
+
+
+def test_hours_today_only(tmp: Path) -> None:
+    """今日1日ぶんしか無いなら書かない。半端な営業時間は誤解を招く。"""
+    print("\n[今日ぶんしか取れない場合]")
+    page = tmp / "today.html"
+    page.write_text('<!doctype html><meta charset="utf-8"><h1>店</h1>'
+                    '<button aria-label="土曜日、11時00分～14時00分、'
+                    '営業時間をコピーします"></button>', encoding="utf-8")
+
+    place = maps_resolver.resolve(page.as_uri())
+    check("1日だけなら None（＝メモに書かない）", place.hours, None)
+
+
 def test_missing_fields(tmp: Path) -> None:
     """取れないときに捏造せず None を返すか。ここが安全性の要。"""
     print("\n[情報が無いページ]")
@@ -375,6 +430,9 @@ if __name__ == "__main__":
         test_coords()
         test_md_roundtrip(tmp)
         test_maps_dom(tmp)
+        test_hours_collapsed(tmp)
+        test_hours_from_aria_labels(tmp)
+        test_hours_today_only(tmp)
         test_missing_fields(tmp)
 
     print(f"\n{'=' * 50}\nPASS {len(PASS)} / FAIL {len(FAIL)}")
