@@ -167,12 +167,48 @@ def _hours_from_labels(page) -> list[str] | None:
     return lines if len(lines) >= 3 else None
 
 
+_DAY_ANNOT_RE = re.compile(r"^([月火水木金土日]曜日)[（(][^）)]{0,12}[）)]")
+_CAVEAT_RE = re.compile(r"\s*(時間変更の可能性|営業時間が異なる可能性があります)\s*")
+_RANGE_JOIN_RE = re.compile(r"(?<=:\d{2})(?=\d{1,2}:\d{2})")
+_DAY_ORDER = "月火水木金土日"
+
+
+def _tidy_hours(lines: list[str]) -> list[str] | None:
+    """マップの営業時間を、恒久的な記録として書ける形に整える。
+
+    実物から取れるのは例えば
+        土曜日 11時00分～14時00分16時30分～19時00分
+        月曜日(敬老の日) 定休日 時間変更の可能性
+    で、そのままでは3つ困る。
+
+    - 時間帯が区切り無しで繋がっていて読めない
+    - 祝日の注記が入る。「月曜日(敬老の日)」は今年しか成り立たないので、
+      恒久的な一覧に書くと翌年から嘘になる
+    - 今日を起点に並ぶので、実行日によって順番が変わる
+
+    曜日と時刻そのものは省略せずに残す。
+    """
+    cleaned = []
+    for line in lines:
+        line = _JP_TIME_RE.sub(lambda t: f"{int(t.group(1))}:{t.group(2)}", line)
+        line = _DAY_ANNOT_RE.sub(r"\1", line)
+        line = _CAVEAT_RE.sub(" ", line)
+        line = _RANGE_JOIN_RE.sub("、", line)
+        line = re.sub(r"\s{2,}", " ", line).strip()
+        if line:
+            cleaned.append(line)
+
+    cleaned.sort(key=lambda l: _DAY_ORDER.find(l[0]) if l[:1] in _DAY_ORDER else 99)
+    return cleaned or None
+
+
 def _read_hours(page) -> list[str] | None:
     """曜日ごとの行をそのまま写す。要約や省略はしない。"""
-    if (hours := _hours_from_table(page)) :
-        return hours
-    _expand_hours(page)
-    return _hours_from_table(page) or _hours_from_labels(page)
+    hours = _hours_from_table(page)
+    if not hours:
+        _expand_hours(page)
+        hours = _hours_from_table(page) or _hours_from_labels(page)
+    return _tidy_hours(hours) if hours else None
 
 
 def search_url(name: str) -> str:
