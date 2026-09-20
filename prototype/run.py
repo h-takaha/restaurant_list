@@ -87,6 +87,27 @@ def to_row(place: maps_resolver.Place, result, hp: str) -> Row:
     )
 
 
+def push_to_main() -> bool:
+    """main へ push する。弾かれたら pull --rebase して1回だけ再試行。
+
+    地図の画面から来店回数や評価を更新すると main が進んでいることがある。
+    """
+    push = git("push", "-u", "origin", "main")
+    if push.returncode == 0:
+        return True
+
+    log("push が弾かれた。pull --rebase して再試行する")
+    if git("pull", "--rebase", "origin", "main").returncode != 0:
+        log("rebase に失敗。アーカイブしない")
+        return False
+
+    push = git("push", "-u", "origin", "main")
+    if push.returncode != 0:
+        log(f"push できなかった。アーカイブしない:\n{push.stderr}")
+        return False
+    return True
+
+
 def patch_coords(data_path: Path, coords: dict[tuple[str, str], tuple[float, float]]) -> int:
     """Playwright が取った座標を data.json に書く。
 
@@ -227,23 +248,21 @@ def main() -> int:
         log("\n書き込み完了。push は --push を付けたときだけ")
         return 0
 
-    git("add", "restaurants.md", "docs/data.json")
-    names = "、".join(row.name for _, row in added)
-    commit = git("commit", "-m", f"{names} を追加")
-    if commit.returncode != 0:
-        log(f"commit するものが無い: {commit.stdout}")
-        return 0
-
-    push = git("push", "-u", "origin", "main")
-    if push.returncode != 0:
-        log("push が弾かれた。pull --rebase して再試行する")
-        if git("pull", "--rebase", "origin", "main").returncode != 0:
-            log("rebase に失敗。アーカイブしない")
+    # 追記が無いときは commit しない。既出の店だけが届いた場合、commit する
+    # ものが無くて失敗し、そこで return するとアーカイブに到達しないため、
+    # 毎朝同じメールを処理し続けることになる。押すものが無くても
+    # アーカイブはする（既出のメールは処理済みなので受信箱に残さない）。
+    if added:
+        git("add", "restaurants.md", "docs/data.json")
+        names = "、".join(row.name for _, row in added)
+        commit = git("commit", "-m", f"{names} を追加")
+        if commit.returncode != 0:
+            log(f"commit できなかった。アーカイブしない:\n{commit.stdout}{commit.stderr}")
             return 1
-        push = git("push", "-u", "origin", "main")
-        if push.returncode != 0:
-            log(f"push できなかった。アーカイブしない:\n{push.stderr}")
+        if not push_to_main():
             return 1
+    else:
+        log("追記が無いので commit しない")
 
     # ここまで来て初めてアーカイブする
     for thread_id, _ in added:

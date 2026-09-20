@@ -110,14 +110,18 @@ class FakeTagger:
 class FakeGit:
     """push の成否と現在のブランチを指定できる git。呼ばれたコマンドを記録する。"""
 
-    def __init__(self, push_ok: bool = True, branch: str = "main") -> None:
-        self.push_ok, self.branch, self.calls = push_ok, branch, []
+    def __init__(self, push_ok: bool = True, branch: str = "main",
+                 commit_ok: bool = True) -> None:
+        self.push_ok, self.branch, self.commit_ok = push_ok, branch, commit_ok
+        self.calls = []
 
     def __call__(self, *args):
         self.calls.append(args)
         if args[0] == "rev-parse":
             return subprocess.CompletedProcess(args, 0, stdout=f"{self.branch}\n", stderr="")
         rc = 0
+        if args[0] == "commit" and not self.commit_ok:
+            rc = 1
         if args[0] == "push" and not self.push_ok:
             rc = 1
         if args[0] == "pull":
@@ -259,6 +263,47 @@ def test_already_listed(tmp: Path) -> None:
     drive(repo, gmail, FakeMaps({URL_A: KNOWN}), FakeTagger(), FakeGit(), ["--apply", "--push"])
     check("行を足さない", len(rows_of(repo)), n_before)
     check("メールはアーカイブする", gmail.archived, ["t1"])
+
+
+def test_only_known_stores_still_archives(tmp: Path) -> None:
+    """既出の店だけが届いた場合。★毎朝同じメールを処理し続ける経路
+
+    追記が無いと commit するものが無い。以前はそこで return していたので
+    アーカイブに到達せず、既に載っている店のメールが受信箱に残り続けていた。
+    運用ルール「既に載っている店は行を足さずメールだけアーカイブ」が壊れていた。
+    """
+    print("\n[既出の店だけが届いた] ★受信箱に残り続ける経路")
+    repo = make_repo(tmp / "allknown")
+    n_before = len(rows_of(repo))
+    gmail = FakeGmail([
+        mail_with_map("t1", "ラーメン山岡家 北見店", URL_A),
+        mail_with_map("t2", "焼肉 珍来", URL_B),
+    ])
+    known2 = Place(name="焼肉 珍来", address="網走郡美幌町字東1条北2丁目")
+    git = FakeGit()
+    code = drive(repo, gmail, FakeMaps({URL_A: KNOWN, URL_B: known2}),
+                 FakeTagger(), git, ["--apply", "--push"])
+
+    check("exit 0", code, 0)
+    check("行は増えない", len(rows_of(repo)), n_before)
+    check("commit は試みない", [c for c in git.calls if c[0] == "commit"], [])
+    check("それでも両方アーカイブする", sorted(gmail.archived), ["t1", "t2"])
+    check("受信箱は空になる", gmail.remaining, [])
+
+
+def test_commit_failure_blocks_archive(tmp: Path) -> None:
+    """commit が失敗したらアーカイブしない。"""
+    print("\n[commit が失敗した場合]")
+    repo = make_repo(tmp / "commitfail")
+    gmail = FakeGmail([mail_with_map()])
+    git = FakeGit(commit_ok=False)
+    code = drive(repo, gmail, FakeMaps({URL_A: NEW}), FakeTagger(), git,
+                 ["--apply", "--push"])
+
+    check("非ゼロで終了", code, 1)
+    check("push しない", [c for c in git.calls if c[0] == "push"], [])
+    check("アーカイブしない", gmail.archived, [])
+    check("受信箱に残る", gmail.remaining, ["t1"])
 
 
 def test_wrong_branch_refuses(tmp: Path) -> None:
@@ -459,6 +504,8 @@ if __name__ == "__main__":
         test_official_site_feeds_tagger(tmp)
         test_tag_policy_violation_stays(tmp)
         test_tag_variant_normalised(tmp)
+        test_only_known_stores_still_archives(tmp)
+        test_commit_failure_blocks_archive(tmp)
         test_wrong_branch_refuses(tmp)
         test_push_failure_blocks_archive(tmp)
         test_success_path(tmp)
