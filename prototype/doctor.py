@@ -67,7 +67,8 @@ def check_node() -> None:
     if not node:
         report(False, "node", "見つからない", "Node.js v18 以上を入れる")
         return
-    version = subprocess.run([node, "-v"], capture_output=True, text=True).stdout.strip()
+    version = subprocess.run([node, "-v"], capture_output=True,
+                             encoding="utf-8", errors="replace").stdout.strip()
     major = int(version.lstrip("v").split(".")[0]) if version else 0
     report(major >= 18, "node", version, "Node.js v18 以上に上げる")
 
@@ -108,17 +109,31 @@ def check_repo() -> None:
     md = REPO / "restaurants.md"
     report(md.exists(), "restaurants.md", str(md), "リポジトリの直下で実行する")
 
+    # Windows のロケール既定（cp932）だと日本語のファイル名で落ちる
     status = subprocess.run(["git", "status", "--porcelain"], cwd=REPO,
-                            capture_output=True, text=True)
+                            capture_output=True, encoding="utf-8", errors="replace")
     dirty = [l for l in status.stdout.splitlines() if "prototype/" not in l]
     if dirty:
         print(f"  --  未コミットの変更が {len(dirty)} 件ある（push 時に巻き込まれる）")
 
     branch = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=REPO,
-                            capture_output=True, text=True).stdout.strip()
+                            capture_output=True, encoding="utf-8",
+                            errors="replace").stdout.strip()
     print(f"  --  いまのブランチ: {branch}")
     if branch != "main":
         print("      run.py --push は main に push する。ブランチを確認すること")
+
+    # プロトタイプの更新が手元に来ているか。git pull はリモート追跡 ref しか
+    # 更新しないので、ローカルの同名ブランチを merge しても古いままになる。
+    # 実際それで直したはずのバグを再現させた。
+    upstream = "origin/prototype/local-ingest"
+    missing = subprocess.run(["git", "log", "--oneline", f"HEAD..{upstream}"], cwd=REPO,
+                             capture_output=True, encoding="utf-8", errors="replace")
+    if missing.returncode == 0 and missing.stdout.strip():
+        count = len(missing.stdout.strip().splitlines())
+        report(False, "プロトタイプの更新", f"{upstream} に未取り込みが {count} 件",
+               f"git fetch && git merge {upstream}"
+               "（origin/ を付けること。付けないとローカルの古い ref を見る）")
 
 
 if __name__ == "__main__":

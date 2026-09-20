@@ -183,6 +183,29 @@ def mail_without_map(tid: str = "t1", subject: str = "新しいラーメン店")
 
 # ── 検証 ─────────────────────────────────────────────────────────────────────
 
+def test_subprocess_encoding() -> None:
+    """外部コマンドの日本語出力を取りこぼさないか。
+
+    text=True だけだと Windows はロケール既定（日本語環境では cp932）で
+    デコードする。build.mjs は店名を UTF-8 で出すので復号に失敗し、読み取り
+    スレッドが落ちて stdout が None になる。実機でここまで到達して落ちた:
+        UnicodeDecodeError: 'cp932' codec can't decode byte 0x83
+        TypeError: 'NoneType' object is not subscriptable
+    """
+    print("\n[外部コマンドの日本語出力]")
+
+    result = run.run_cmd("node", "-e",
+                         'console.log("キャッシュ利用 鳥若 北見総本店 43.80°")')
+    check("日本語がそのまま読める", "鳥若 北見総本店" in (result.stdout or ""), True)
+    check("stdout は None にならない", result.stdout is not None, True)
+    check("stderr も None にならない", result.stderr is not None, True)
+
+    # 復号できないバイトが来ても落ちず、置換文字にして進む
+    broken = run.run_cmd("node", "-e",
+                         'process.stdout.write(Buffer.from([0x83, 0x41]))')
+    check("壊れたバイト列でも例外を投げない", broken.stdout is not None, True)
+
+
 def test_empty_inbox(tmp: Path) -> None:
     print("\n[受信箱が空]")
     repo = make_repo(tmp / "empty")
@@ -424,6 +447,7 @@ def test_existing_records_untouched(tmp: Path) -> None:
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as d:
         tmp = Path(d)
+        test_subprocess_encoding()
         test_empty_inbox(tmp)
         test_dry_run(tmp)
         test_unidentifiable_stays(tmp)

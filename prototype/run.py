@@ -28,8 +28,20 @@ def log(message: str) -> None:
     print(message, flush=True)
 
 
+def run_cmd(*args: str) -> subprocess.CompletedProcess:
+    """外部コマンドを UTF-8 固定で読む。
+
+    text=True だけだと Windows はロケール既定（日本語環境では cp932）で
+    デコードする。build.mjs は店名を UTF-8 で出すので復号に失敗し、
+    読み取りスレッドが落ちて stdout が None になる。git も日本語の
+    commit message を返すので同じ問題が起きる。
+    """
+    return subprocess.run(args, cwd=REPO, capture_output=True,
+                          encoding="utf-8", errors="replace")
+
+
 def git(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True)
+    return run_cmd("git", *args)
 
 
 def build_place(session, mail: gmail_client.Mail) -> maps_resolver.Place | None:
@@ -201,8 +213,8 @@ def main() -> int:
         tags = sorted(set(tags) | set(row.tags))
 
     if added:
-        build = subprocess.run(["node", "build.mjs"], cwd=REPO, capture_output=True, text=True)
-        log(build.stdout[-2000:] or build.stderr[-2000:])
+        build = run_cmd("node", "build.mjs")
+        log((build.stdout or build.stderr or "")[-2000:])
         if build.returncode != 0:
             log("build.mjs が失敗した。push しない")
             return 1
