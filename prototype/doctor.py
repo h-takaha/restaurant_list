@@ -123,6 +123,18 @@ def check_repo() -> None:
     if branch != "main":
         print("      run.py --push は main に push する。ブランチを確認すること")
 
+    # プロトタイプの更新が手元に来ているか。git pull はリモート追跡 ref しか
+    # 更新しないので、ローカルの同名ブランチを merge しても古いままになる。
+    # 実際それで直したはずのバグを再現させた。
+    upstream = "origin/prototype/local-ingest"
+    missing = subprocess.run(["git", "log", "--oneline", f"HEAD..{upstream}"], cwd=REPO,
+                             capture_output=True, encoding="utf-8", errors="replace")
+    if missing.returncode == 0 and missing.stdout.strip():
+        count = len(missing.stdout.strip().splitlines())
+        report(False, "プロトタイプの更新", f"{upstream} に未取り込みが {count} 件",
+               f"git fetch && git merge {upstream}"
+               "（origin/ を付けること。付けないとローカルの古い ref を見る）")
+
 
 if __name__ == "__main__":
     print("\n[実行環境]")

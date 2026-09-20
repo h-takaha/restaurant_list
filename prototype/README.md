@@ -100,6 +100,17 @@ playwright install chromium
 
 配置できたかは `python doctor.py` で確かめる。足りないものと直し方が出る。
 
+プロトタイプを更新するときは **`origin/` を付ける**こと。`git pull` はリモート追跡 ref しか
+更新しないので、`git merge prototype/local-ingest` だとローカルの古い ref を見て
+「Already up to date」と言われる（実際それで直したはずのバグを再現させた）。
+
+```bash
+git fetch
+git merge origin/prototype/local-ingest
+```
+
+取り込み漏れは `doctor.py` が検出する。
+
 `ClaudeTagger` を使うなら `ANTHROPIC_API_KEY` を設定する。`OllamaTagger` なら
 `ollama serve` が動いていればよい。
 
